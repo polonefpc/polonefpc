@@ -13,27 +13,28 @@ const schema = z.object({
   full_name: z.string().trim().min(2).max(80),
   email: z.string().trim().email().max(255),
   password: z.string().min(8).max(72),
+  ref_code: z.string().regex(/^\d{5}$/).optional().or(z.literal("")),
 });
 
 function Signup() {
   const nav = useNavigate();
   const { ref } = useSearch({ from: "/auth/signup" });
   const [step, setStep] = useState<"form" | "otp">("form");
-  const [form, setForm] = useState({ full_name: "", email: "", password: "" });
+  const [form, setForm] = useState({ full_name: "", email: "", password: "", ref_code: ref || "" });
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsed = schema.safeParse(form);
-    if (!parsed.success) { toast.error(parsed.error.issues[0].message); return; }
+    if (!parsed.success) { toast.error("تأكد من البيانات (رمز الإحالة 5 أرقام)"); return; }
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
         emailRedirectTo: `${window.location.origin}/dashboard`,
-        data: { full_name: form.full_name, ref: ref || undefined },
+        data: { full_name: form.full_name, ref_code: form.ref_code || undefined },
       },
     });
     setLoading(false);
@@ -68,7 +69,10 @@ function Signup() {
               placeholder="البريد الإلكتروني" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
             <input type="password" className="w-full bg-input border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
               placeholder="كلمة المرور (8 أحرف على الأقل)" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
-            {ref && <div className="text-xs text-primary">رمز إحالة مفعّل: {ref.slice(0, 8)}…</div>}
+            <input inputMode="numeric" maxLength={5}
+              className="w-full bg-input border border-border rounded-xl px-4 py-3 text-center tracking-widest"
+              placeholder="رمز الإحالة (اختياري - 5 أرقام)"
+              value={form.ref_code} onChange={e => setForm({...form, ref_code: e.target.value.replace(/\D/g,"")})} />
             <button disabled={loading} className="btn-primary w-full rounded-xl py-3 font-bold">{loading ? "..." : "إرسال كود التحقق"}</button>
           </form>
         ) : (
@@ -88,3 +92,4 @@ function Signup() {
     </div>
   );
 }
+
