@@ -63,11 +63,12 @@ function Admin() {
 
 function Deposits() {
   const [items, setItems] = useState<any[]>([]);
-  const load = () => supabase.from("deposit_requests").select("*,profiles(email,full_name),packages(name,price,daily_rate)").order("created_at",{ascending:false}).then(({data})=>setItems(data ?? []));
+  const load = () => supabase.from("deposit_requests")
+    .select("*,profiles!deposit_requests_user_profile_fkey(email,full_name),packages(name,price,daily_rate)")
+    .order("created_at",{ascending:false}).then(({data})=>setItems(data ?? []));
   useEffect(()=>{ load(); },[]);
   const decide = async (r: any, status: "approved" | "rejected") => {
     if (status === "approved") {
-      // Activate user + set package
       const { error } = await supabase.from("profiles").update({
         is_active: true, package_id: r.package_id, activated_at: new Date().toISOString()
       }).eq("id", r.user_id);
@@ -104,12 +105,15 @@ function Deposits() {
 
 function Withdrawals() {
   const [items, setItems] = useState<any[]>([]);
-  const load = () => supabase.from("withdrawals").select("*,profiles(email,full_name,balance)").order("created_at",{ascending:false}).then(({data})=>setItems(data ?? []));
+  const load = () => supabase.from("withdrawals")
+    .select("*,profiles!withdrawals_user_profile_fkey(email,full_name,balance)")
+    .order("created_at",{ascending:false}).then(({data})=>setItems(data ?? []));
   useEffect(()=>{load();},[]);
   const decide = async (r:any, status:"approved"|"rejected") => {
-    if (status === "approved") {
-      // Zero out the user's balance per spec
-      await supabase.from("profiles").update({ balance: 0 }).eq("id", r.user_id);
+    if (status === "rejected") {
+      // Refund: balance was deducted at request time
+      const { data: p } = await supabase.from("profiles").select("balance").eq("id", r.user_id).single();
+      await supabase.from("profiles").update({ balance: Number(p?.balance ?? 0) + Number(r.amount) }).eq("id", r.user_id);
     }
     await supabase.from("withdrawals").update({ status, processed_at: new Date().toISOString() }).eq("id", r.id);
     toast.success("تم"); load();
@@ -130,8 +134,8 @@ function Withdrawals() {
           </div>
           {r.status === "pending" && (
             <div className="flex gap-2 mt-3">
-              <button onClick={()=>decide(r,"approved")} className="bg-success/90 text-success-foreground px-3 py-1.5 rounded-lg text-sm font-bold">قبول (تصفير)</button>
-              <button onClick={()=>decide(r,"rejected")} className="bg-destructive/90 text-destructive-foreground px-3 py-1.5 rounded-lg text-sm font-bold">رفض</button>
+              <button onClick={()=>decide(r,"approved")} className="bg-success/90 text-success-foreground px-3 py-1.5 rounded-lg text-sm font-bold">قبول</button>
+              <button onClick={()=>decide(r,"rejected")} className="bg-destructive/90 text-destructive-foreground px-3 py-1.5 rounded-lg text-sm font-bold">رفض (إعادة النقاط)</button>
             </div>
           )}
         </div>
@@ -140,9 +144,13 @@ function Withdrawals() {
   );
 }
 
+
 function Orders() {
   const [items, setItems] = useState<any[]>([]);
-  const load = () => supabase.from("product_orders").select("*,profiles(email,full_name),products(name)").order("created_at",{ascending:false}).then(({data})=>setItems(data ?? []));
+  const load = () => supabase.from("product_orders")
+    .select("*,profiles!product_orders_user_profile_fkey(email,full_name),products(name)")
+    .order("created_at",{ascending:false}).then(({data})=>setItems(data ?? []));
+
   useEffect(()=>{load();},[]);
   return (
     <div className="space-y-2">
