@@ -149,6 +149,13 @@ export type Database = {
             referencedRelation: "packages"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deposit_requests_user_profile_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       packages: {
@@ -211,6 +218,13 @@ export type Database = {
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "product_orders_user_profile_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       products: {
@@ -253,6 +267,7 @@ export type Database = {
           id: string
           is_active: boolean
           package_id: number | null
+          referral_code: string
           referral_count: number
           referred_by: string | null
           updated_at: string
@@ -266,6 +281,7 @@ export type Database = {
           id: string
           is_active?: boolean
           package_id?: number | null
+          referral_code: string
           referral_count?: number
           referred_by?: string | null
           updated_at?: string
@@ -279,6 +295,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           package_id?: number | null
+          referral_code?: string
           referral_count?: number
           referred_by?: string | null
           updated_at?: string
@@ -388,13 +405,22 @@ export type Database = {
           user_id?: string
           wallet_address?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "withdrawals_user_profile_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      gen_referral_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
