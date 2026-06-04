@@ -178,38 +178,37 @@ function Orders() {
 
 function Users() {
   const [items, setItems] = useState<any[]>([]);
-  const [bonus, setBonus] = useState<Record<string,string>>({});
+  const [delta, setDelta] = useState<Record<string,string>>({});
   const load = () => supabase.from("profiles").select("*,packages(name,price)").order("created_at",{ascending:false}).then(({data})=>setItems(data ?? []));
   useEffect(()=>{load();},[]);
-  const addPoints = async (id:string) => {
-    const a = Number(bonus[id]); if (!a) return;
+  const adjust = async (id:string, sign: 1 | -1) => {
+    const a = Number(delta[id]); if (!a || a <= 0) return toast.error("أدخل قيمة موجبة");
     const u = items.find(x=>x.id===id);
-    await supabase.from("profiles").update({ balance: Number(u.balance) + a }).eq("id", id);
-    toast.success("تمت إضافة النقاط"); setBonus({...bonus,[id]:""}); load();
-  };
-  const zero = async (id:string) => {
-    await supabase.from("profiles").update({ balance: 0 }).eq("id", id); toast.success("تم التصفير"); load();
+    const next = Math.max(0, Number(u.balance) + sign * a);
+    await supabase.from("profiles").update({ balance: next }).eq("id", id);
+    toast.success(sign === 1 ? "تمت الإضافة" : "تم الخصم");
+    setDelta({...delta,[id]:""}); load();
   };
   const toggleActive = async (u:any) => {
     await supabase.from("profiles").update({ is_active: !u.is_active }).eq("id", u.id); load();
   };
   return (
     <div className="space-y-2">
-      {items.map(u=>(
+      {items.map((u:any)=>(
         <div key={u.id} className="glass rounded-xl p-4">
           <div className="flex justify-between">
             <div>
               <div className="font-bold">{u.full_name ?? u.email}</div>
               <div className="text-xs text-muted-foreground">{u.email}</div>
-              <div className="text-xs font-mono break-all mt-1">{u.id}</div>
+              <div className="text-xs mt-1">رمز الإحالة: <b className="font-mono tracking-widest">{u.referral_code}</b></div>
               <div className="text-sm mt-1">رصيد: <b>${u.balance}</b> • {u.packages?.name ?? "بدون باقة"} • إحالات: {u.referral_count}</div>
             </div>
             <span className={`text-xs px-2 py-1 rounded h-fit ${u.is_active?"bg-success/20 text-success":"bg-destructive/20 text-destructive"}`}>{u.is_active?"مفعّل":"محظور"}</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-3 items-center">
-            <input className="bg-input border border-border rounded px-2 py-1 text-sm w-24" placeholder="نقاط+" value={bonus[u.id]??""} onChange={e=>setBonus({...bonus,[u.id]:e.target.value})} />
-            <button onClick={()=>addPoints(u.id)} className="btn-primary px-2.5 py-1 rounded text-xs font-bold">إضافة</button>
-            <button onClick={()=>zero(u.id)} className="bg-destructive/80 px-2.5 py-1 rounded text-xs font-bold">تصفير</button>
+            <input className="bg-input border border-border rounded px-2 py-1 text-sm w-28" placeholder="قيمة النقاط" type="number" value={delta[u.id]??""} onChange={e=>setDelta({...delta,[u.id]:e.target.value})} />
+            <button onClick={()=>adjust(u.id, 1)} className="bg-success/90 text-success-foreground px-2.5 py-1 rounded text-xs font-bold">+ إضافة</button>
+            <button onClick={()=>adjust(u.id, -1)} className="bg-destructive/80 px-2.5 py-1 rounded text-xs font-bold">− خصم</button>
             <button onClick={()=>toggleActive(u)} className="glass px-2.5 py-1 rounded text-xs font-bold">{u.is_active?"حظر":"تفعيل"}</button>
           </div>
         </div>
@@ -221,8 +220,40 @@ function Users() {
 function Products() {
   const [items, setItems] = useState<any[]>([]);
   const [form, setForm] = useState({ name:"", description:"", image_url:"", price:"" });
+  const [uploading, setUploading] = useState(false);
   const load = () => supabase.from("products").select("*").order("created_at",{ascending:false}).then(({data})=>setItems(data ?? []));
   useEffect(()=>{load();},[]);
+  const onFile = async (file: File) => {
+    if (file.size > 800 * 1024) {
+      // compress via canvas
+      setUploading(true);
+      const dataUrl = await new Promise<string>((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const max = 800;
+            const scale = Math.min(1, max / Math.max(img.width, img.height));
+            const w = img.width * scale, h = img.height * scale;
+            const c = document.createElement("canvas");
+            c.width = w; c.height = h;
+            c.getContext("2d")!.drawImage(img, 0, 0, w, h);
+            res(c.toDataURL("image/jpeg", 0.75));
+          };
+          img.onerror = rej;
+          img.src = reader.result as string;
+        };
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+      setForm(f => ({ ...f, image_url: dataUrl }));
+      setUploading(false);
+    } else {
+      const reader = new FileReader();
+      reader.onload = () => setForm(f => ({ ...f, image_url: reader.result as string }));
+      reader.readAsDataURL(file);
+    }
+  };
   const add = async () => {
     if (!form.name || !form.price) return toast.error("اسم وسعر");
     await supabase.from("products").insert({ ...form, price: Number(form.price) });
@@ -233,7 +264,14 @@ function Products() {
       <div className="glass rounded-xl p-4 grid sm:grid-cols-2 gap-2">
         <input className="bg-input border border-border rounded px-3 py-2" placeholder="اسم المنتج" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} />
         <input className="bg-input border border-border rounded px-3 py-2" placeholder="السعر بالنقاط" type="number" value={form.price} onChange={e=>setForm({...form,price:e.target.value})} />
-        <input className="bg-input border border-border rounded px-3 py-2 sm:col-span-2" placeholder="رابط الصورة" value={form.image_url} onChange={e=>setForm({...form,image_url:e.target.value})} />
+        <div className="sm:col-span-2 flex items-center gap-3">
+          <label className="btn-primary rounded px-4 py-2 font-bold text-sm cursor-pointer">
+            {uploading ? "..." : "اختر صورة من الجهاز"}
+            <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && onFile(e.target.files[0])} />
+          </label>
+          {form.image_url && <img src={form.image_url} className="w-16 h-16 rounded object-cover" />}
+          {form.image_url && <button onClick={()=>setForm({...form,image_url:""})} className="text-destructive text-xs">إزالة</button>}
+        </div>
         <textarea className="bg-input border border-border rounded px-3 py-2 sm:col-span-2" placeholder="الوصف" value={form.description} onChange={e=>setForm({...form,description:e.target.value})} />
         <button onClick={add} className="btn-primary rounded px-4 py-2 font-bold sm:col-span-2">إضافة منتج</button>
       </div>
@@ -254,6 +292,7 @@ function Products() {
     </div>
   );
 }
+
 
 function Contacts() {
   const [items, setItems] = useState<any[]>([]);
