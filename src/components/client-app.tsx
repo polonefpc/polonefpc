@@ -108,8 +108,8 @@ export function HomeTab({ profile, packages, refs, yields }: any) {
             <div className="font-bold mt-0.5">{pkg ? `${pkg.name} • $${pkg.price}` : "—"}</div>
           </div>
           <div className="bg-secondary/50 rounded-xl p-3">
-            <div className="text-muted-foreground text-xs">النسبة اليومية</div>
-            <div className="font-bold mt-0.5 text-primary">{effectiveRate.toFixed(2)}%</div>
+            <div className="text-muted-foreground text-xs">رمز الإحالة</div>
+            <div className="font-black mt-0.5 text-primary tracking-widest text-lg">{profile?.referral_code ?? "—"}</div>
           </div>
           <div className="bg-secondary/50 rounded-xl p-3">
             <div className="text-muted-foreground text-xs">الاسم</div>
@@ -121,13 +121,13 @@ export function HomeTab({ profile, packages, refs, yields }: any) {
           </div>
         </div>
         <div className="mt-4 bg-secondary/50 rounded-xl p-3">
-          <div className="text-muted-foreground text-xs">معرّف الحساب (رمز الإحالة)</div>
-          <div className="font-mono text-sm mt-1 break-all select-all">{profile?.id}</div>
+          <div className="text-muted-foreground text-xs">معرّف الحساب</div>
+          <div className="font-mono text-xs mt-1 break-all select-all opacity-70">{profile?.id}</div>
         </div>
       </div>
 
       <div className="glass rounded-3xl p-5">
-        <h3 className="font-bold mb-3">آخر الأرباح اليومية</h3>
+        <h3 className="font-bold mb-3">سجل الأرباح اليومية</h3>
         {yields.length === 0 ? <div className="text-sm text-muted-foreground">لم تبدأ الأرباح بعد. سيبدأ التداول بعد تفعيل باقتك.</div> :
           <ul className="text-sm divide-y divide-border">
             {yields.map((y: any) => (
@@ -141,6 +141,7 @@ export function HomeTab({ profile, packages, refs, yields }: any) {
     </div>
   );
 }
+
 
 export function DepositTab({ packages, reload }: any) {
   const [pkgId, setPkgId] = useState<number | null>(null);
@@ -191,7 +192,6 @@ export function DepositTab({ packages, reload }: any) {
               className={`p-4 rounded-2xl text-right transition ${pkgId === p.id ? "btn-primary" : "bg-secondary/50 hover:bg-secondary"}`}>
               <div className="text-xs opacity-70">{p.name}</div>
               <div className="text-2xl font-black mt-1">${p.price}</div>
-              <div className="text-xs mt-1">{Number(p.daily_rate).toFixed(1)}% يومياً</div>
             </button>
           ))}
         </div>
@@ -201,6 +201,7 @@ export function DepositTab({ packages, reload }: any) {
           {loading ? "..." : "إرسال طلب الإيداع"}
         </button>
       </div>
+
 
       {mine.length > 0 && (
         <div className="glass rounded-3xl p-5">
@@ -224,7 +225,7 @@ export function DepositTab({ packages, reload }: any) {
 export function WithdrawTab({ profile, reload }: any) {
   const [mode, setMode] = useState<"withdraw" | "transfer">("withdraw");
   const [wallet, setWallet] = useState("");
-  const [toId, setToId] = useState("");
+  const [toCode, setToCode] = useState("");
   const [amt, setAmt] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -236,9 +237,11 @@ export function WithdrawTab({ profile, reload }: any) {
     setLoading(true);
     const { data: u } = await supabase.auth.getUser();
     const { error } = await supabase.from("withdrawals").insert({ user_id: u.user!.id, wallet_address: wallet, amount: a });
+    if (error) { setLoading(false); toast.error(error.message); return; }
+    // Deduct immediately
+    await supabase.from("profiles").update({ balance: Number(profile.balance) - a }).eq("id", u.user!.id);
     setLoading(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("تم إرسال طلب السحب");
+    toast.success("تم إرسال طلب السحب وخصم النقاط");
     setWallet(""); setAmt(""); reload();
   };
 
@@ -246,11 +249,11 @@ export function WithdrawTab({ profile, reload }: any) {
     const a = Number(amt);
     if (!a || a <= 0 || a > 40) { toast.error("الحد الأقصى للتحويل 40$"); return; }
     if (a > Number(profile?.balance ?? 0)) { toast.error("رصيد غير كافٍ"); return; }
+    if (!/^\d{5}$/.test(toCode.trim())) { toast.error("أدخل رمز إحالة من 5 أرقام"); return; }
     setLoading(true);
     const { data: u } = await supabase.auth.getUser();
-    // call RPC via insert is tricky; use direct atomic via service is needed but we'll do simple two-step (admin can audit).
-    // For safety: update sender, recipient, insert transfer
-    const { data: rec, error: e0 } = await supabase.from("profiles").select("id,balance").eq("id", toId).maybeSingle();
+    const { data: rec, error: e0 } = await (supabase.from("profiles") as any)
+      .select("id,balance").eq("referral_code", toCode.trim()).maybeSingle();
     if (e0 || !rec) { setLoading(false); toast.error("المستلم غير موجود"); return; }
     if (rec.id === u.user!.id) { setLoading(false); toast.error("لا يمكن التحويل لنفسك"); return; }
     const { error: e1 } = await supabase.from("profiles").update({ balance: Number(profile.balance) - a }).eq("id", u.user!.id);
@@ -260,7 +263,7 @@ export function WithdrawTab({ profile, reload }: any) {
     setLoading(false);
     if (e2 || e3) { toast.error("حدث خطأ"); return; }
     toast.success("تم التحويل");
-    setAmt(""); setToId(""); reload();
+    setAmt(""); setToCode(""); reload();
   };
 
   return (
@@ -278,19 +281,20 @@ export function WithdrawTab({ profile, reload }: any) {
             <input className="w-full bg-input border border-border rounded-xl px-4 py-3" placeholder="عنوان محفظتك"
               value={wallet} onChange={e=>setWallet(e.target.value)} />
           ) : (
-            <input className="w-full bg-input border border-border rounded-xl px-4 py-3 font-mono text-sm" placeholder="معرّف حساب المستلم"
-              value={toId} onChange={e=>setToId(e.target.value)} />
+            <input inputMode="numeric" maxLength={5} className="w-full bg-input border border-border rounded-xl px-4 py-3 text-center tracking-widest text-lg font-bold"
+              placeholder="رمز المستلم (5 أرقام)" value={toCode} onChange={e=>setToCode(e.target.value.replace(/\D/g,""))} />
           )}
           <input type="number" step="0.01" max={40} className="w-full bg-input border border-border rounded-xl px-4 py-3"
             placeholder="المبلغ (حد أقصى 40$)" value={amt} onChange={e=>setAmt(e.target.value)} />
           <button disabled={loading} onClick={mode==="withdraw"?submitWithdraw:submitTransfer}
             className="btn-primary w-full rounded-xl py-3 font-bold">{loading?"...":mode==="withdraw"?"طلب السحب":"تحويل النقاط"}</button>
-          <p className="text-xs text-muted-foreground">عند الموافقة على السحب يتم تصفير رصيد السحب من حسابك تلقائياً.</p>
+          <p className="text-xs text-muted-foreground">تُخصم النقاط تلقائياً عند إرسال العملية. في حال رفض السحب تُعاد إلى رصيدك.</p>
         </div>
       </div>
     </div>
   );
 }
+
 
 export function LocalTab() {
   const [contacts, setContacts] = useState<any[]>([]);
@@ -359,21 +363,21 @@ export function ShopTab({ profile, reload }: any) {
 }
 
 export function ReferralTab({ profile, refs }: any) {
-  const link = typeof window !== "undefined" ? `${window.location.origin}/auth/signup?ref=${profile?.id}` : "";
+  const code = profile?.referral_code ?? "";
   return (
     <div className="space-y-4">
       <div className="glass rounded-3xl p-6 text-center">
         <Share2 className="w-10 h-10 text-primary mx-auto" />
         <div className="mt-3 text-3xl font-black">{refs.length}</div>
         <div className="text-xs text-muted-foreground">إجمالي الإحالات</div>
-        <div className="mt-4 text-sm text-primary font-bold">+{(refs.length * 0.5).toFixed(1)}% نسبة إضافية يومية</div>
       </div>
-      <div className="glass rounded-3xl p-5">
-        <div className="text-xs text-muted-foreground mb-1">رابط الإحالة الخاص</div>
-        <div className="bg-secondary/50 rounded-xl p-3 font-mono text-xs break-all">{link}</div>
-        <button onClick={()=>{navigator.clipboard.writeText(link); toast.success("تم النسخ");}} className="btn-primary mt-3 w-full rounded-xl py-2.5 text-sm font-bold">
-          نسخ الرابط
+      <div className="glass rounded-3xl p-5 text-center">
+        <div className="text-xs text-muted-foreground mb-2">رمز الإحالة الخاص بك</div>
+        <div className="text-5xl font-black tracking-[0.4em] text-gradient py-3">{code}</div>
+        <button onClick={()=>{navigator.clipboard.writeText(code); toast.success("تم نسخ الرمز");}} className="btn-primary mt-3 w-full rounded-xl py-2.5 text-sm font-bold">
+          نسخ الرمز
         </button>
+        <p className="text-xs text-muted-foreground mt-3">شارك هذا الرمز مع أصدقائك ليدخلوه عند التسجيل.</p>
       </div>
       <div className="glass rounded-3xl p-5">
         <h3 className="font-bold mb-2">قائمة الإحالات</h3>
@@ -390,3 +394,4 @@ export function ReferralTab({ profile, refs }: any) {
     </div>
   );
 }
+
