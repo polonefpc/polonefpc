@@ -391,16 +391,30 @@ function Settings() {
     ]);
     toast.success("تم الحفظ");
   };
+  const runYield = async () => {
+    const res = await fetch("/api/public/cron/daily-yield", { method: "POST" });
+    const j = await res.json().catch(()=>({}));
+    if (res.ok) toast.success(`تم تشغيل الأرباح • معالجة: ${j.processed ?? 0}`);
+    else toast.error("فشل التشغيل");
+  };
   return (
-    <div className="glass rounded-xl p-4 space-y-2">
-      <label className="text-xs text-muted-foreground">عنوان محفظة الإيداع</label>
-      <input className="w-full bg-input border border-border rounded px-3 py-2" value={s.deposit_wallet} onChange={e=>setS({...s,deposit_wallet:e.target.value})} />
-      <label className="text-xs text-muted-foreground">الشبكة</label>
-      <input className="w-full bg-input border border-border rounded px-3 py-2" value={s.deposit_network} onChange={e=>setS({...s,deposit_network:e.target.value})} />
-      <button onClick={save} className="btn-primary rounded px-4 py-2 font-bold">حفظ</button>
+    <div className="space-y-3">
+      <div className="glass rounded-xl p-4 space-y-2">
+        <label className="text-xs text-muted-foreground">عنوان محفظة الإيداع</label>
+        <input className="w-full bg-input border border-border rounded px-3 py-2" value={s.deposit_wallet} onChange={e=>setS({...s,deposit_wallet:e.target.value})} />
+        <label className="text-xs text-muted-foreground">الشبكة</label>
+        <input className="w-full bg-input border border-border rounded px-3 py-2" value={s.deposit_network} onChange={e=>setS({...s,deposit_network:e.target.value})} />
+        <button onClick={save} className="btn-primary rounded px-4 py-2 font-bold">حفظ</button>
+      </div>
+      <div className="glass rounded-xl p-4">
+        <div className="font-bold mb-1">تشغيل الأرباح اليومية يدوياً</div>
+        <p className="text-xs text-muted-foreground mb-3">يتم تلقائياً مرة كل 24 ساعة. استخدم الزر للتشغيل الفوري عند الحاجة.</p>
+        <button onClick={runYield} className="btn-primary rounded px-4 py-2 font-bold">تشغيل الآن</button>
+      </div>
     </div>
   );
 }
+
 
 function StatusBadge({ status }: { status: string }) {
   const map: any = { approved: "bg-success/20 text-success", rejected: "bg-destructive/20 text-destructive", pending: "bg-muted text-muted-foreground" };
