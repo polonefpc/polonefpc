@@ -89,7 +89,7 @@ export function useProfile() {
 // ───────── tabs ─────────
 export function HomeTab({ profile, packages, refs, yields }: any) {
   const pkg = packages.find((p: any) => p.id === profile?.package_id);
-  const effectiveRate = (pkg ? Number(pkg.daily_rate) : 0) + (profile?.referral_count ?? 0) * 0.5;
+
   return (
     <div className="space-y-4">
       <div className="glass rounded-3xl p-6">
