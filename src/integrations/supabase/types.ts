@@ -112,30 +112,33 @@ export type Database = {
       }
       deposit_requests: {
         Row: {
+          amount: number
           created_at: string
           id: string
           note: string | null
-          package_id: number
+          package_id: number | null
           processed_at: string | null
           status: string
           tx_hash: string | null
           user_id: string
         }
         Insert: {
+          amount?: number
           created_at?: string
           id?: string
           note?: string | null
-          package_id: number
+          package_id?: number | null
           processed_at?: string | null
           status?: string
           tx_hash?: string | null
           user_id: string
         }
         Update: {
+          amount?: number
           created_at?: string
           id?: string
           note?: string | null
-          package_id?: number
+          package_id?: number | null
           processed_at?: string | null
           status?: string
           tx_hash?: string | null

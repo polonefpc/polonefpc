@@ -120,9 +120,10 @@ export function HomeTab({ profile, packages, refs, yields }: any) {
             <div className="font-bold mt-0.5">{refs.length}</div>
           </div>
         </div>
-        <div className="mt-4 bg-secondary/50 rounded-xl p-3">
+        <div className="mt-4 bg-secondary/50 rounded-xl p-3 text-center">
           <div className="text-muted-foreground text-xs">معرّف الحساب</div>
-          <div className="font-mono text-xs mt-1 break-all select-all opacity-70">{profile?.id}</div>
+          <div className="font-black text-2xl mt-1 tracking-[0.4em] text-primary select-all">{profile?.referral_code ?? "—"}</div>
+          <div className="text-[10px] text-muted-foreground mt-1">المعرّف ورمز الإحالة موحّدان</div>
         </div>
       </div>
 
@@ -143,39 +144,42 @@ export function HomeTab({ profile, packages, refs, yields }: any) {
 }
 
 
-export function DepositTab({ packages, reload }: any) {
-  const [pkgId, setPkgId] = useState<number | null>(null);
+export function DepositTab({ reload }: any) {
+  const [amount, setAmount] = useState("");
   const [tx, setTx] = useState("");
   const [wallet, setWallet] = useState<{ address: string; network: string }>({ address: "", network: "" });
   const [loading, setLoading] = useState(false);
   const [mine, setMine] = useState<any[]>([]);
+
+  const loadMine = () => supabase.auth.getUser().then(({ data: u }) => {
+    if (u.user) supabase.from("deposit_requests").select("*").eq("user_id", u.user.id).order("created_at",{ascending:false}).then(({data})=>setMine(data ?? []));
+  });
 
   useEffect(() => {
     supabase.from("settings").select("*").in("key",["deposit_wallet","deposit_network"]).then(({ data }) => {
       const map: any = {}; data?.forEach(r => map[r.key] = r.value);
       setWallet({ address: map.deposit_wallet ?? "", network: map.deposit_network ?? "" });
     });
-    supabase.auth.getUser().then(({ data: u }) => {
-      if (u.user) supabase.from("deposit_requests").select("*,packages(name,price)").eq("user_id", u.user.id).order("created_at",{ascending:false}).then(({data})=>setMine(data ?? []));
-    });
+    loadMine();
   }, []);
 
   const submit = async () => {
-    if (!pkgId) { toast.error("اختر باقة"); return; }
+    const a = Number(amount);
+    if (!a || a <= 0) { toast.error("أدخل قيمة الإيداع"); return; }
     setLoading(true);
     const { data: u } = await supabase.auth.getUser();
-    const { error } = await supabase.from("deposit_requests").insert({ user_id: u.user!.id, package_id: pkgId, tx_hash: tx });
+    const { error } = await supabase.from("deposit_requests").insert({ user_id: u.user!.id, amount: a, tx_hash: tx, package_id: null as any });
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     toast.success("تم إرسال طلب الإيداع. بانتظار موافقة الأدمن.");
-    setTx(""); setPkgId(null); reload();
+    setTx(""); setAmount(""); reload(); loadMine();
   };
 
   return (
     <div className="space-y-4">
       <div className="glass rounded-3xl p-6">
-        <h2 className="text-xl font-extrabold">إيداع وشراء باقة</h2>
-        <p className="text-xs text-muted-foreground mt-1">حوّل قيمة الباقة إلى المحفظة أدناه ثم أرسل طلب الإيداع.</p>
+        <h2 className="text-xl font-extrabold">إيداع رصيد</h2>
+        <p className="text-xs text-muted-foreground mt-1">حوّل المبلغ إلى المحفظة أدناه، ثم أرسل طلب الإيداع. تُضاف النقاط إلى رصيدك بعد موافقة الأدمن.</p>
         <div className="mt-4 bg-secondary/50 rounded-xl p-4">
           <div className="text-xs text-muted-foreground">الشبكة: {wallet.network || "—"}</div>
           <div className="font-mono text-sm mt-2 break-all select-all bg-background/40 p-3 rounded-lg">{wallet.address || "لم يحدد بعد"}</div>
@@ -184,24 +188,17 @@ export function DepositTab({ packages, reload }: any) {
         </div>
       </div>
 
-      <div className="glass rounded-3xl p-6">
-        <h3 className="font-bold mb-3">اختر باقتك</h3>
-        <div className="grid grid-cols-2 gap-3">
-          {packages.map((p: any) => (
-            <button key={p.id} onClick={() => setPkgId(p.id)}
-              className={`p-4 rounded-2xl text-right transition ${pkgId === p.id ? "btn-primary" : "bg-secondary/50 hover:bg-secondary"}`}>
-              <div className="text-xs opacity-70">{p.name}</div>
-              <div className="text-2xl font-black mt-1">${p.price}</div>
-            </button>
-          ))}
-        </div>
-        <input className="mt-4 w-full bg-input border border-border rounded-xl px-4 py-3"
+      <div className="glass rounded-3xl p-6 space-y-3">
+        <h3 className="font-bold">تفاصيل طلب الإيداع</h3>
+        <input type="number" step="0.01" min={1} className="w-full bg-input border border-border rounded-xl px-4 py-3"
+          placeholder="المبلغ بالـ USDT" value={amount} onChange={e => setAmount(e.target.value)} />
+        <input className="w-full bg-input border border-border rounded-xl px-4 py-3"
           placeholder="رقم عملية التحويل / TX Hash (اختياري)" value={tx} onChange={e => setTx(e.target.value)} />
-        <button disabled={loading || !pkgId} onClick={submit} className="btn-primary w-full mt-3 rounded-xl py-3 font-bold">
+        <button disabled={loading} onClick={submit} className="btn-primary w-full rounded-xl py-3 font-bold">
           {loading ? "..." : "إرسال طلب الإيداع"}
         </button>
+        <p className="text-[11px] text-muted-foreground">لشراء باقة تداول: ادفع رصيدك من تبويب «السلة».</p>
       </div>
-
 
       {mine.length > 0 && (
         <div className="glass rounded-3xl p-5">
@@ -209,7 +206,7 @@ export function DepositTab({ packages, reload }: any) {
           <ul className="divide-y divide-border text-sm">
             {mine.map((r:any)=>(
               <li key={r.id} className="py-2 flex justify-between">
-                <span>{r.packages?.name} • ${r.packages?.price}</span>
+                <span>${Number(r.amount).toFixed(2)}</span>
                 <span className={`text-xs px-2 py-1 rounded ${r.status==="approved"?"bg-success/20 text-success":r.status==="rejected"?"bg-destructive/20 text-destructive":"bg-muted text-muted-foreground"}`}>
                   {r.status === "approved" ? "مقبول" : r.status === "rejected" ? "مرفوض" : "قيد المراجعة"}
                 </span>
@@ -221,6 +218,7 @@ export function DepositTab({ packages, reload }: any) {
     </div>
   );
 }
+
 
 export function WithdrawTab({ profile, reload }: any) {
   const [mode, setMode] = useState<"withdraw" | "transfer">("withdraw");
@@ -319,10 +317,11 @@ export function LocalTab() {
   );
 }
 
-export function ShopTab({ profile, reload }: any) {
+export function ShopTab({ profile, packages, reload }: any) {
   const [products, setProducts] = useState<any[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   useEffect(()=>{ supabase.from("products").select("*").eq("is_available",true).then(({data})=>setProducts(data ?? [])); },[]);
+
   const buy = async (p:any) => {
     if (Number(profile.balance) < Number(p.price)) { toast.error("نقاط غير كافية"); return; }
     setBusy(p.id);
@@ -334,8 +333,23 @@ export function ShopTab({ profile, reload }: any) {
     if (e2) { toast.error(e2.message); return; }
     toast.success("تم إرسال طلب الشراء"); reload();
   };
+
+  const buyPackage = async (pkg: any) => {
+    if (Number(profile.balance) < Number(pkg.price)) { toast.error("رصيد غير كافٍ لشراء الباقة"); return; }
+    if (profile.package_id) { toast.error("لديك باقة مفعّلة بالفعل"); return; }
+    setBusy("pkg-"+pkg.id);
+    const { data: u } = await supabase.auth.getUser();
+    const newBalance = Number(profile.balance) - Number(pkg.price);
+    const { error } = await supabase.from("profiles").update({ balance: newBalance }).eq("id", u.user!.id);
+    if (error) { setBusy(null); toast.error(error.message); return; }
+    // Create a pending deposit_request representing the package purchase for admin approval
+    await supabase.from("deposit_requests").insert({ user_id: u.user!.id, package_id: pkg.id, amount: pkg.price, tx_hash: "PKG-BUY", note: "شراء باقة من السلة" });
+    setBusy(null);
+    toast.success("تم إرسال طلب شراء الباقة. بانتظار موافقة الأدمن للتفعيل."); reload();
+  };
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="glass rounded-3xl p-6 flex justify-between items-center">
         <div>
           <div className="text-xs text-muted-foreground">رصيدك</div>
@@ -343,24 +357,50 @@ export function ShopTab({ profile, reload }: any) {
         </div>
         <ShoppingBag className="w-8 h-8 text-primary" />
       </div>
-      {products.length === 0 && <div className="glass rounded-2xl p-6 text-center text-muted-foreground">لا توجد منتجات حالياً</div>}
-      <div className="grid grid-cols-2 gap-3">
-        {products.map(p => (
-          <div key={p.id} className="glass rounded-2xl p-3">
-            {p.image_url && <img src={p.image_url} alt={p.name} className="w-full h-32 object-cover rounded-xl" />}
-            <div className="font-bold mt-2 text-sm">{p.name}</div>
-            {p.description && <div className="text-xs text-muted-foreground line-clamp-2">{p.description}</div>}
-            <div className="flex justify-between items-center mt-3">
-              <span className="text-gradient font-black">${p.price}</span>
-              <button disabled={busy===p.id || Number(profile?.balance ?? 0) < Number(p.price)} onClick={()=>buy(p)}
-                className="btn-primary px-3 py-1.5 rounded-lg text-xs font-bold">شراء</button>
-            </div>
-          </div>
-        ))}
+
+      <div className="glass rounded-3xl p-5">
+        <h3 className="font-bold mb-1">باقات التداول (عقود إلكترونية)</h3>
+        <p className="text-xs text-muted-foreground mb-3">اشترِ الباقة برصيدك لتفعيل تداولها اليومي.</p>
+        <div className="grid grid-cols-2 gap-3">
+          {packages?.map((pkg: any) => {
+            const owned = profile?.package_id === pkg.id;
+            return (
+              <div key={pkg.id} className="bg-secondary/50 rounded-2xl p-4">
+                <div className="text-xs text-muted-foreground">{pkg.name}</div>
+                <div className="text-2xl font-black mt-1">${pkg.price}</div>
+                <button disabled={busy===("pkg-"+pkg.id) || owned || !!profile?.package_id || Number(profile?.balance ?? 0) < Number(pkg.price)}
+                  onClick={()=>buyPackage(pkg)}
+                  className="btn-primary w-full mt-3 rounded-lg py-1.5 text-xs font-bold disabled:opacity-50">
+                  {owned ? "مفعّلة" : "شراء"}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="glass rounded-3xl p-5">
+        <h3 className="font-bold mb-3">المنتجات</h3>
+        {products.length === 0 ? <div className="text-sm text-muted-foreground text-center py-4">لا توجد منتجات حالياً</div> :
+          <div className="grid grid-cols-2 gap-3">
+            {products.map(p => (
+              <div key={p.id} className="bg-secondary/40 rounded-2xl p-3">
+                {p.image_url && <img src={p.image_url} alt={p.name} className="w-full h-32 object-cover rounded-xl" />}
+                <div className="font-bold mt-2 text-sm">{p.name}</div>
+                {p.description && <div className="text-xs text-muted-foreground line-clamp-2">{p.description}</div>}
+                <div className="flex justify-between items-center mt-3">
+                  <span className="text-gradient font-black">${p.price}</span>
+                  <button disabled={busy===p.id || Number(profile?.balance ?? 0) < Number(p.price)} onClick={()=>buy(p)}
+                    className="btn-primary px-3 py-1.5 rounded-lg text-xs font-bold">شراء</button>
+                </div>
+              </div>
+            ))}
+          </div>}
       </div>
     </div>
   );
 }
+
 
 export function ReferralTab({ profile, refs }: any) {
   const code = profile?.referral_code ?? "";

@@ -64,15 +64,27 @@ function Admin() {
 function Deposits() {
   const [items, setItems] = useState<any[]>([]);
   const load = () => supabase.from("deposit_requests")
-    .select("*,profiles!deposit_requests_user_profile_fkey(email,full_name),packages(name,price,daily_rate)")
+    .select("*,profiles!deposit_requests_user_profile_fkey(email,full_name,balance,referral_code),packages(name,price,daily_rate)")
     .order("created_at",{ascending:false}).then(({data})=>setItems(data ?? []));
   useEffect(()=>{ load(); },[]);
   const decide = async (r: any, status: "approved" | "rejected") => {
     if (status === "approved") {
-      const { error } = await supabase.from("profiles").update({
-        is_active: true, package_id: r.package_id, activated_at: new Date().toISOString()
-      }).eq("id", r.user_id);
-      if (error) return toast.error(error.message);
+      if (r.package_id) {
+        // Package purchase from shop (balance already deducted) → just activate the package
+        const { error } = await supabase.from("profiles").update({
+          is_active: true, package_id: r.package_id, activated_at: new Date().toISOString()
+        }).eq("id", r.user_id);
+        if (error) return toast.error(error.message);
+      } else {
+        // Regular cash deposit → add amount to balance
+        const cur = Number(r.profiles?.balance ?? 0);
+        const { error } = await supabase.from("profiles").update({ balance: cur + Number(r.amount) }).eq("id", r.user_id);
+        if (error) return toast.error(error.message);
+      }
+    } else if (status === "rejected" && r.package_id && r.tx_hash === "PKG-BUY") {
+      // Refund package purchase
+      const cur = Number(r.profiles?.balance ?? 0);
+      await supabase.from("profiles").update({ balance: cur + Number(r.amount) }).eq("id", r.user_id);
     }
     await supabase.from("deposit_requests").update({ status, processed_at: new Date().toISOString() }).eq("id", r.id);
     toast.success("تم"); load();
@@ -85,15 +97,17 @@ function Deposits() {
           <div className="flex justify-between items-start">
             <div>
               <div className="font-bold">{r.profiles?.full_name ?? r.profiles?.email}</div>
-              <div className="text-xs text-muted-foreground">{r.profiles?.email}</div>
-              <div className="text-sm mt-1">{r.packages?.name} • ${r.packages?.price} • {r.packages?.daily_rate}%</div>
-              {r.tx_hash && <div className="text-xs font-mono mt-1 break-all">{r.tx_hash}</div>}
+              <div className="text-xs text-muted-foreground">{r.profiles?.email} • ID: <b className="font-mono">{r.profiles?.referral_code}</b></div>
+              {r.package_id
+                ? <div className="text-sm mt-1">🎁 شراء باقة: {r.packages?.name} • ${r.packages?.price} • يومياً ${r.packages?.daily_rate}</div>
+                : <div className="text-sm mt-1">💰 إيداع رصيد: <b>${Number(r.amount).toFixed(2)}</b></div>}
+              {r.tx_hash && <div className="text-xs font-mono mt-1 break-all opacity-70">{r.tx_hash}</div>}
             </div>
             <StatusBadge status={r.status} />
           </div>
           {r.status === "pending" && (
             <div className="flex gap-2 mt-3">
-              <button onClick={()=>decide(r,"approved")} className="bg-success/90 text-success-foreground px-3 py-1.5 rounded-lg text-sm font-bold">قبول وتفعيل</button>
+              <button onClick={()=>decide(r,"approved")} className="bg-success/90 text-success-foreground px-3 py-1.5 rounded-lg text-sm font-bold">{r.package_id ? "قبول وتفعيل الباقة" : "قبول وإضافة الرصيد"}</button>
               <button onClick={()=>decide(r,"rejected")} className="bg-destructive/90 text-destructive-foreground px-3 py-1.5 rounded-lg text-sm font-bold">رفض</button>
             </div>
           )}
@@ -178,9 +192,15 @@ function Orders() {
 
 function Users() {
   const [items, setItems] = useState<any[]>([]);
+  const [packages, setPackages] = useState<any[]>([]);
   const [delta, setDelta] = useState<Record<string,string>>({});
+  const [pkgSel, setPkgSel] = useState<Record<string,string>>({});
+  const [search, setSearch] = useState("");
   const load = () => supabase.from("profiles").select("*,packages(name,price)").order("created_at",{ascending:false}).then(({data})=>setItems(data ?? []));
-  useEffect(()=>{load();},[]);
+  useEffect(()=>{
+    load();
+    supabase.from("packages").select("*").order("id").then(({data})=>setPackages(data ?? []));
+  },[]);
   const adjust = async (id:string, sign: 1 | -1) => {
     const a = Number(delta[id]); if (!a || a <= 0) return toast.error("أدخل قيمة موجبة");
     const u = items.find(x=>x.id===id);
@@ -192,15 +212,30 @@ function Users() {
   const toggleActive = async (u:any) => {
     await supabase.from("profiles").update({ is_active: !u.is_active }).eq("id", u.id); load();
   };
+  const assignPackage = async (id:string) => {
+    const pid = pkgSel[id]; if (!pid) return toast.error("اختر باقة");
+    const v = pid === "none" ? null : Number(pid);
+    await supabase.from("profiles").update({
+      package_id: v, is_active: v !== null, activated_at: v !== null ? new Date().toISOString() : null,
+    }).eq("id", id);
+    toast.success("تم تحديث الباقة"); load();
+  };
+  const filtered = items.filter((u:any)=> {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return (u.email??"").toLowerCase().includes(s) || (u.full_name??"").toLowerCase().includes(s) || (u.referral_code??"").includes(s);
+  });
   return (
     <div className="space-y-2">
-      {items.map((u:any)=>(
+      <input className="w-full bg-input border border-border rounded px-3 py-2 text-sm" placeholder="بحث: إيميل / اسم / رمز إحالة"
+        value={search} onChange={e=>setSearch(e.target.value)} />
+      {filtered.map((u:any)=>(
         <div key={u.id} className="glass rounded-xl p-4">
           <div className="flex justify-between">
             <div>
               <div className="font-bold">{u.full_name ?? u.email}</div>
               <div className="text-xs text-muted-foreground">{u.email}</div>
-              <div className="text-xs mt-1">رمز الإحالة: <b className="font-mono tracking-widest">{u.referral_code}</b></div>
+              <div className="text-xs mt-1">المعرّف/الإحالة: <b className="font-mono tracking-widest">{u.referral_code}</b></div>
               <div className="text-sm mt-1">رصيد: <b>${u.balance}</b> • {u.packages?.name ?? "بدون باقة"} • إحالات: {u.referral_count}</div>
             </div>
             <span className={`text-xs px-2 py-1 rounded h-fit ${u.is_active?"bg-success/20 text-success":"bg-destructive/20 text-destructive"}`}>{u.is_active?"مفعّل":"محظور"}</span>
@@ -210,6 +245,14 @@ function Users() {
             <button onClick={()=>adjust(u.id, 1)} className="bg-success/90 text-success-foreground px-2.5 py-1 rounded text-xs font-bold">+ إضافة</button>
             <button onClick={()=>adjust(u.id, -1)} className="bg-destructive/80 px-2.5 py-1 rounded text-xs font-bold">− خصم</button>
             <button onClick={()=>toggleActive(u)} className="glass px-2.5 py-1 rounded text-xs font-bold">{u.is_active?"حظر":"تفعيل"}</button>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-2 items-center">
+            <select className="bg-input border border-border rounded px-2 py-1 text-sm" value={pkgSel[u.id] ?? (u.package_id?String(u.package_id):"")} onChange={e=>setPkgSel({...pkgSel,[u.id]:e.target.value})}>
+              <option value="">— اختر باقة —</option>
+              {packages.map(p=> <option key={p.id} value={p.id}>{p.name} • ${p.price}</option>)}
+              <option value="none">إلغاء الباقة</option>
+            </select>
+            <button onClick={()=>assignPackage(u.id)} className="btn-primary px-2.5 py-1 rounded text-xs font-bold">تفعيل/تغيير الباقة</button>
           </div>
         </div>
       ))}
@@ -397,6 +440,22 @@ function Settings() {
     if (res.ok) toast.success(`تم تشغيل الأرباح • معالجة: ${j.processed ?? 0}`);
     else toast.error("فشل التشغيل");
   };
+  const [gift, setGift] = useState("");
+  const [giftBusy, setGiftBusy] = useState(false);
+  const giftAll = async () => {
+    const a = Number(gift);
+    if (!a || a <= 0) return toast.error("أدخل قيمة موجبة");
+    if (!confirm(`إضافة ${a}$ لكل العملاء المفعّلين كهدية؟`)) return;
+    setGiftBusy(true);
+    const { data: users } = await supabase.from("profiles").select("id, balance").eq("is_active", true);
+    let n = 0;
+    for (const u of users ?? []) {
+      await supabase.from("profiles").update({ balance: Number(u.balance) + a }).eq("id", u.id);
+      n++;
+    }
+    setGiftBusy(false); setGift("");
+    toast.success(`تم إهداء ${a}$ لـ ${n} عميل`);
+  };
   return (
     <div className="space-y-3">
       <div className="glass rounded-xl p-4 space-y-2">
@@ -408,8 +467,16 @@ function Settings() {
       </div>
       <div className="glass rounded-xl p-4">
         <div className="font-bold mb-1">تشغيل الأرباح اليومية يدوياً</div>
-        <p className="text-xs text-muted-foreground mb-3">يتم تلقائياً مرة كل 24 ساعة. استخدم الزر للتشغيل الفوري عند الحاجة.</p>
+        <p className="text-xs text-muted-foreground mb-3">تتم تلقائياً يومياً الساعة 00:14. استخدم الزر للتشغيل الفوري عند الحاجة.</p>
         <button onClick={runYield} className="btn-primary rounded px-4 py-2 font-bold">تشغيل الآن</button>
+      </div>
+      <div className="glass rounded-xl p-4">
+        <div className="font-bold mb-1">إهداء نقاط لكل العملاء</div>
+        <p className="text-xs text-muted-foreground mb-3">يضيف القيمة المدخلة كهدية لرصيد كل العملاء المفعّلين.</p>
+        <div className="flex gap-2">
+          <input type="number" step="0.01" className="flex-1 bg-input border border-border rounded px-3 py-2" placeholder="قيمة الهدية بالدولار" value={gift} onChange={e=>setGift(e.target.value)} />
+          <button disabled={giftBusy} onClick={giftAll} className="btn-primary rounded px-4 py-2 font-bold">{giftBusy?"...":"إهداء للجميع"}</button>
+        </div>
       </div>
     </div>
   );
