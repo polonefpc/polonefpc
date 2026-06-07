@@ -440,6 +440,22 @@ function Settings() {
     if (res.ok) toast.success(`تم تشغيل الأرباح • معالجة: ${j.processed ?? 0}`);
     else toast.error("فشل التشغيل");
   };
+  const [gift, setGift] = useState("");
+  const [giftBusy, setGiftBusy] = useState(false);
+  const giftAll = async () => {
+    const a = Number(gift);
+    if (!a || a <= 0) return toast.error("أدخل قيمة موجبة");
+    if (!confirm(`إضافة ${a}$ لكل العملاء المفعّلين كهدية؟`)) return;
+    setGiftBusy(true);
+    const { data: users } = await supabase.from("profiles").select("id, balance").eq("is_active", true);
+    let n = 0;
+    for (const u of users ?? []) {
+      await supabase.from("profiles").update({ balance: Number(u.balance) + a }).eq("id", u.id);
+      n++;
+    }
+    setGiftBusy(false); setGift("");
+    toast.success(`تم إهداء ${a}$ لـ ${n} عميل`);
+  };
   return (
     <div className="space-y-3">
       <div className="glass rounded-xl p-4 space-y-2">
@@ -451,8 +467,16 @@ function Settings() {
       </div>
       <div className="glass rounded-xl p-4">
         <div className="font-bold mb-1">تشغيل الأرباح اليومية يدوياً</div>
-        <p className="text-xs text-muted-foreground mb-3">يتم تلقائياً مرة كل 24 ساعة. استخدم الزر للتشغيل الفوري عند الحاجة.</p>
+        <p className="text-xs text-muted-foreground mb-3">تتم تلقائياً يومياً الساعة 00:14. استخدم الزر للتشغيل الفوري عند الحاجة.</p>
         <button onClick={runYield} className="btn-primary rounded px-4 py-2 font-bold">تشغيل الآن</button>
+      </div>
+      <div className="glass rounded-xl p-4">
+        <div className="font-bold mb-1">إهداء نقاط لكل العملاء</div>
+        <p className="text-xs text-muted-foreground mb-3">يضيف القيمة المدخلة كهدية لرصيد كل العملاء المفعّلين.</p>
+        <div className="flex gap-2">
+          <input type="number" step="0.01" className="flex-1 bg-input border border-border rounded px-3 py-2" placeholder="قيمة الهدية بالدولار" value={gift} onChange={e=>setGift(e.target.value)} />
+          <button disabled={giftBusy} onClick={giftAll} className="btn-primary rounded px-4 py-2 font-bold">{giftBusy?"...":"إهداء للجميع"}</button>
+        </div>
       </div>
     </div>
   );
