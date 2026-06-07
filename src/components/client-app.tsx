@@ -120,9 +120,10 @@ export function HomeTab({ profile, packages, refs, yields }: any) {
             <div className="font-bold mt-0.5">{refs.length}</div>
           </div>
         </div>
-        <div className="mt-4 bg-secondary/50 rounded-xl p-3">
+        <div className="mt-4 bg-secondary/50 rounded-xl p-3 text-center">
           <div className="text-muted-foreground text-xs">معرّف الحساب</div>
-          <div className="font-mono text-xs mt-1 break-all select-all opacity-70">{profile?.id}</div>
+          <div className="font-black text-2xl mt-1 tracking-[0.4em] text-primary select-all">{profile?.referral_code ?? "—"}</div>
+          <div className="text-[10px] text-muted-foreground mt-1">المعرّف ورمز الإحالة موحّدان</div>
         </div>
       </div>
 
