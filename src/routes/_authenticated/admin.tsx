@@ -64,15 +64,27 @@ function Admin() {
 function Deposits() {
   const [items, setItems] = useState<any[]>([]);
   const load = () => supabase.from("deposit_requests")
-    .select("*,profiles!deposit_requests_user_profile_fkey(email,full_name),packages(name,price,daily_rate)")
+    .select("*,profiles!deposit_requests_user_profile_fkey(email,full_name,balance,referral_code),packages(name,price,daily_rate)")
     .order("created_at",{ascending:false}).then(({data})=>setItems(data ?? []));
   useEffect(()=>{ load(); },[]);
   const decide = async (r: any, status: "approved" | "rejected") => {
     if (status === "approved") {
-      const { error } = await supabase.from("profiles").update({
-        is_active: true, package_id: r.package_id, activated_at: new Date().toISOString()
-      }).eq("id", r.user_id);
-      if (error) return toast.error(error.message);
+      if (r.package_id) {
+        // Package purchase from shop (balance already deducted) → just activate the package
+        const { error } = await supabase.from("profiles").update({
+          is_active: true, package_id: r.package_id, activated_at: new Date().toISOString()
+        }).eq("id", r.user_id);
+        if (error) return toast.error(error.message);
+      } else {
+        // Regular cash deposit → add amount to balance
+        const cur = Number(r.profiles?.balance ?? 0);
+        const { error } = await supabase.from("profiles").update({ balance: cur + Number(r.amount) }).eq("id", r.user_id);
+        if (error) return toast.error(error.message);
+      }
+    } else if (status === "rejected" && r.package_id && r.tx_hash === "PKG-BUY") {
+      // Refund package purchase
+      const cur = Number(r.profiles?.balance ?? 0);
+      await supabase.from("profiles").update({ balance: cur + Number(r.amount) }).eq("id", r.user_id);
     }
     await supabase.from("deposit_requests").update({ status, processed_at: new Date().toISOString() }).eq("id", r.id);
     toast.success("تم"); load();
@@ -85,15 +97,17 @@ function Deposits() {
           <div className="flex justify-between items-start">
             <div>
               <div className="font-bold">{r.profiles?.full_name ?? r.profiles?.email}</div>
-              <div className="text-xs text-muted-foreground">{r.profiles?.email}</div>
-              <div className="text-sm mt-1">{r.packages?.name} • ${r.packages?.price} • {r.packages?.daily_rate}%</div>
-              {r.tx_hash && <div className="text-xs font-mono mt-1 break-all">{r.tx_hash}</div>}
+              <div className="text-xs text-muted-foreground">{r.profiles?.email} • ID: <b className="font-mono">{r.profiles?.referral_code}</b></div>
+              {r.package_id
+                ? <div className="text-sm mt-1">🎁 شراء باقة: {r.packages?.name} • ${r.packages?.price} • يومياً ${r.packages?.daily_rate}</div>
+                : <div className="text-sm mt-1">💰 إيداع رصيد: <b>${Number(r.amount).toFixed(2)}</b></div>}
+              {r.tx_hash && <div className="text-xs font-mono mt-1 break-all opacity-70">{r.tx_hash}</div>}
             </div>
             <StatusBadge status={r.status} />
           </div>
           {r.status === "pending" && (
             <div className="flex gap-2 mt-3">
-              <button onClick={()=>decide(r,"approved")} className="bg-success/90 text-success-foreground px-3 py-1.5 rounded-lg text-sm font-bold">قبول وتفعيل</button>
+              <button onClick={()=>decide(r,"approved")} className="bg-success/90 text-success-foreground px-3 py-1.5 rounded-lg text-sm font-bold">{r.package_id ? "قبول وتفعيل الباقة" : "قبول وإضافة الرصيد"}</button>
               <button onClick={()=>decide(r,"rejected")} className="bg-destructive/90 text-destructive-foreground px-3 py-1.5 rounded-lg text-sm font-bold">رفض</button>
             </div>
           )}
