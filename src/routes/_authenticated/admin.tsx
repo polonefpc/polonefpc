@@ -192,9 +192,15 @@ function Orders() {
 
 function Users() {
   const [items, setItems] = useState<any[]>([]);
+  const [packages, setPackages] = useState<any[]>([]);
   const [delta, setDelta] = useState<Record<string,string>>({});
+  const [pkgSel, setPkgSel] = useState<Record<string,string>>({});
+  const [search, setSearch] = useState("");
   const load = () => supabase.from("profiles").select("*,packages(name,price)").order("created_at",{ascending:false}).then(({data})=>setItems(data ?? []));
-  useEffect(()=>{load();},[]);
+  useEffect(()=>{
+    load();
+    supabase.from("packages").select("*").order("id").then(({data})=>setPackages(data ?? []));
+  },[]);
   const adjust = async (id:string, sign: 1 | -1) => {
     const a = Number(delta[id]); if (!a || a <= 0) return toast.error("أدخل قيمة موجبة");
     const u = items.find(x=>x.id===id);
@@ -206,15 +212,30 @@ function Users() {
   const toggleActive = async (u:any) => {
     await supabase.from("profiles").update({ is_active: !u.is_active }).eq("id", u.id); load();
   };
+  const assignPackage = async (id:string) => {
+    const pid = pkgSel[id]; if (!pid) return toast.error("اختر باقة");
+    const v = pid === "none" ? null : Number(pid);
+    await supabase.from("profiles").update({
+      package_id: v, is_active: v !== null, activated_at: v !== null ? new Date().toISOString() : null,
+    }).eq("id", id);
+    toast.success("تم تحديث الباقة"); load();
+  };
+  const filtered = items.filter((u:any)=> {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return (u.email??"").toLowerCase().includes(s) || (u.full_name??"").toLowerCase().includes(s) || (u.referral_code??"").includes(s);
+  });
   return (
     <div className="space-y-2">
-      {items.map((u:any)=>(
+      <input className="w-full bg-input border border-border rounded px-3 py-2 text-sm" placeholder="بحث: إيميل / اسم / رمز إحالة"
+        value={search} onChange={e=>setSearch(e.target.value)} />
+      {filtered.map((u:any)=>(
         <div key={u.id} className="glass rounded-xl p-4">
           <div className="flex justify-between">
             <div>
               <div className="font-bold">{u.full_name ?? u.email}</div>
               <div className="text-xs text-muted-foreground">{u.email}</div>
-              <div className="text-xs mt-1">رمز الإحالة: <b className="font-mono tracking-widest">{u.referral_code}</b></div>
+              <div className="text-xs mt-1">المعرّف/الإحالة: <b className="font-mono tracking-widest">{u.referral_code}</b></div>
               <div className="text-sm mt-1">رصيد: <b>${u.balance}</b> • {u.packages?.name ?? "بدون باقة"} • إحالات: {u.referral_count}</div>
             </div>
             <span className={`text-xs px-2 py-1 rounded h-fit ${u.is_active?"bg-success/20 text-success":"bg-destructive/20 text-destructive"}`}>{u.is_active?"مفعّل":"محظور"}</span>
@@ -224,6 +245,14 @@ function Users() {
             <button onClick={()=>adjust(u.id, 1)} className="bg-success/90 text-success-foreground px-2.5 py-1 rounded text-xs font-bold">+ إضافة</button>
             <button onClick={()=>adjust(u.id, -1)} className="bg-destructive/80 px-2.5 py-1 rounded text-xs font-bold">− خصم</button>
             <button onClick={()=>toggleActive(u)} className="glass px-2.5 py-1 rounded text-xs font-bold">{u.is_active?"حظر":"تفعيل"}</button>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-2 items-center">
+            <select className="bg-input border border-border rounded px-2 py-1 text-sm" value={pkgSel[u.id] ?? (u.package_id?String(u.package_id):"")} onChange={e=>setPkgSel({...pkgSel,[u.id]:e.target.value})}>
+              <option value="">— اختر باقة —</option>
+              {packages.map(p=> <option key={p.id} value={p.id}>{p.name} • ${p.price}</option>)}
+              <option value="none">إلغاء الباقة</option>
+            </select>
+            <button onClick={()=>assignPackage(u.id)} className="btn-primary px-2.5 py-1 rounded text-xs font-bold">تفعيل/تغيير الباقة</button>
           </div>
         </div>
       ))}
