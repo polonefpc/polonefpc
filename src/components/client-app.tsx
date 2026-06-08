@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, ShoppingBag, Share2, LogOut, Crown, Shield } from "lucide-react";
 import { toast } from "sonner";
 import type { Role } from "@/lib/auth";
+import { requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
 
 type Tab = "home" | "deposit" | "withdraw" | "local" | "shop" | "referral";
 
@@ -226,6 +228,7 @@ export function WithdrawTab({ profile, reload }: any) {
   const [toCode, setToCode] = useState("");
   const [amt, setAmt] = useState("");
   const [loading, setLoading] = useState(false);
+  const transferPointsFn = useServerFn(transferPoints);
 
   const submitWithdraw = async () => {
     const a = Number(amt);
@@ -249,17 +252,9 @@ export function WithdrawTab({ profile, reload }: any) {
     if (a > Number(profile?.balance ?? 0)) { toast.error("رصيد غير كافٍ"); return; }
     if (!/^\d{5}$/.test(toCode.trim())) { toast.error("أدخل رمز إحالة من 5 أرقام"); return; }
     setLoading(true);
-    const { data: u } = await supabase.auth.getUser();
-    const { data: rec, error: e0 } = await (supabase.from("profiles") as any)
-      .select("id,balance").eq("referral_code", toCode.trim()).maybeSingle();
-    if (e0 || !rec) { setLoading(false); toast.error("المستلم غير موجود"); return; }
-    if (rec.id === u.user!.id) { setLoading(false); toast.error("لا يمكن التحويل لنفسك"); return; }
-    const { error: e1 } = await supabase.from("profiles").update({ balance: Number(profile.balance) - a }).eq("id", u.user!.id);
-    if (e1) { setLoading(false); toast.error(e1.message); return; }
-    const { error: e2 } = await supabase.from("profiles").update({ balance: Number(rec.balance) + a }).eq("id", rec.id);
-    const { error: e3 } = await supabase.from("transfers").insert({ from_user: u.user!.id, to_user: rec.id, amount: a });
+    const result = await transferPointsFn({ data: { toCode: toCode.trim(), amount: a } });
     setLoading(false);
-    if (e2 || e3) { toast.error("حدث خطأ"); return; }
+    if (!result.ok) { toast.error(result.error); return; }
     toast.success("تم التحويل");
     setAmt(""); setToCode(""); reload();
   };
@@ -320,6 +315,7 @@ export function LocalTab() {
 export function ShopTab({ profile, packages, reload }: any) {
   const [products, setProducts] = useState<any[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const requestPackagePurchaseFn = useServerFn(requestPackagePurchase);
   useEffect(()=>{ supabase.from("products").select("*").eq("is_available",true).then(({data})=>setProducts(data ?? [])); },[]);
 
   const buy = async (p:any) => {
@@ -338,13 +334,9 @@ export function ShopTab({ profile, packages, reload }: any) {
     if (Number(profile.balance) < Number(pkg.price)) { toast.error("رصيد غير كافٍ لشراء الباقة"); return; }
     if (profile.package_id) { toast.error("لديك باقة مفعّلة بالفعل"); return; }
     setBusy("pkg-"+pkg.id);
-    const { data: u } = await supabase.auth.getUser();
-    const newBalance = Number(profile.balance) - Number(pkg.price);
-    const { error } = await supabase.from("profiles").update({ balance: newBalance }).eq("id", u.user!.id);
-    if (error) { setBusy(null); toast.error(error.message); return; }
-    // Create a pending deposit_request representing the package purchase for admin approval
-    await supabase.from("deposit_requests").insert({ user_id: u.user!.id, package_id: pkg.id, amount: pkg.price, tx_hash: "PKG-BUY", note: "شراء باقة من السلة" });
+    const result = await requestPackagePurchaseFn({ data: { packageId: Number(pkg.id) } });
     setBusy(null);
+    if (!result.ok) { toast.error(result.error); return; }
     toast.success("تم إرسال طلب شراء الباقة. بانتظار موافقة الأدمن للتفعيل."); reload();
   };
 

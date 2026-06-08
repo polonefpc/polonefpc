@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.transfer_points_by_code(text, numeric);

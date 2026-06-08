@@ -10,8 +10,8 @@ export const Route = createFileRoute("/")({
   },
   head: () => ({
     meta: [
-      { title: "Polone — منصة التداول الذكي" },
-      { name: "description", content: "polone منصة تداول تلقائي بأرباح يومية حتى 2.3% ونظام إحالات." },
+      { title: "Polone — عقود إلكترونية مربحة" },
+      { name: "description", content: "polone منصة عالمية للعقود الإلكترونية مع إيداع وسحب فوري ودعم المحافظ الإلكترونية." },
     ],
   }),
   component: Landing,
@@ -32,13 +32,13 @@ function Landing() {
       </header>
 
       <section className="px-6 pt-16 pb-24 max-w-6xl mx-auto text-center">
-        <span className="inline-block glass px-4 py-1.5 rounded-full text-xs text-primary mb-6">منصة تداول ذكي • يومياً 24س</span>
+        <span className="inline-block glass px-4 py-1.5 rounded-full text-xs text-primary mb-6">منصة عالمية • عقود إلكترونية مربحة</span>
         <h1 className="text-5xl md:text-7xl font-black leading-tight">
-          استثمر بذكاء.<br/>
-          <span className="text-gradient">اربح يومياً تلقائياً.</span>
+          polone<br/>
+          <span className="text-gradient">عقود إلكترونية مربحة.</span>
         </h1>
         <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
-          polone يوفر لك نظام تداول آلي يضاعف رصيدك كل 24 ساعة بنسب تصل إلى 2.3% حسب باقتك، مع نظام إحالات يرفع نسبتك 0.5% لكل صديق.
+          منصة عالمية تدعم الإيداع والسحب الفوري، وتعمل مع كل المحافظ الإلكترونية، مع نظام باقات واضح وإدارة آمنة للرصيد والطلبات.
         </p>
         <div className="mt-10 flex gap-3 justify-center">
           <Link to="/auth/signup" className="btn-primary px-8 py-4 rounded-2xl font-bold inline-flex items-center gap-2">
@@ -50,10 +50,10 @@ function Landing() {
 
       <section className="px-6 pb-20 max-w-6xl mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { i: TrendingUp, t: "ربح يومي حتى 2.3%", d: "حسب نوع باقتك" },
-          { i: Users, t: "+0.5% لكل إحالة", d: "كلما زادت إحالاتك زاد ربحك" },
-          { i: Wallet, t: "محفظة رقمية كاملة", d: "إيداع، سحب، تحويل، تسوق" },
-          { i: ShieldCheck, t: "موافقات أدمن", d: "حماية لكل عملية مالية" },
+          { i: TrendingUp, t: "عقود إلكترونية", d: "باقات يومية حسب الاشتراك" },
+          { i: Users, t: "منصة عالمية", d: "واجهة عربية سهلة لكل العملاء" },
+          { i: Wallet, t: "كل المحافظ الإلكترونية", d: "إيداع وسحب وتحويل داخلي" },
+          { i: ShieldCheck, t: "إيداع وسحب فوري", d: "طلبات منظّمة ومراجعة آمنة" },
         ].map((f, i) => (
           <div key={i} className="glass rounded-2xl p-6">
             <f.i className="w-7 h-7 text-primary mb-3" />
@@ -67,10 +67,10 @@ function Landing() {
         <h2 className="text-3xl font-extrabold text-center mb-10">باقات الاستثمار</h2>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { p: 50, r: "1.0%" },
-            { p: 100, r: "1.5%" },
-            { p: 300, r: "2.0%" },
-            { p: 900, r: "2.3%" },
+            { p: 90, r: "2.3 USDT" },
+            { p: 130, r: "6.7 USDT" },
+            { p: 320, r: "15.4 USDT" },
+            { p: 985, r: "41.2 USDT" },
           ].map((b, i) => (
             <div key={i} className="glass rounded-2xl p-6 text-center hover:scale-105 transition">
               <div className="text-sm text-muted-foreground">الباقة {i + 1}</div>
