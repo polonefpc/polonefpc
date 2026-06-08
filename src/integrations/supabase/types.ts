@@ -431,6 +431,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      transfer_points_by_code: {
+        Args: { _amount: number; _to_code: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "agent" | "user"
