@@ -149,7 +149,8 @@ export function HomeTab({ profile, packages, refs, yields }: any) {
 export function DepositTab({ reload }: any) {
   const [amount, setAmount] = useState("");
   const [tx, setTx] = useState("");
-  const [wallet, setWallet] = useState<{ address: string; network: string }>({ address: "", network: "" });
+  const [wallets, setWallets] = useState<any[]>([]);
+  const [desc, setDesc] = useState("");
   const [loading, setLoading] = useState(false);
   const [mine, setMine] = useState<any[]>([]);
 
@@ -158,10 +159,8 @@ export function DepositTab({ reload }: any) {
   });
 
   useEffect(() => {
-    supabase.from("settings").select("*").in("key",["deposit_wallet","deposit_network"]).then(({ data }) => {
-      const map: any = {}; data?.forEach(r => map[r.key] = r.value);
-      setWallet({ address: map.deposit_wallet ?? "", network: map.deposit_network ?? "" });
-    });
+    supabase.from("deposit_wallets").select("*").eq("is_active", true).order("sort_order").then(({data})=>setWallets(data ?? []));
+    supabase.from("settings").select("*").eq("key","deposit_description").maybeSingle().then(({data})=>setDesc(data?.value ?? ""));
     loadMine();
   }, []);
 
@@ -177,17 +176,29 @@ export function DepositTab({ reload }: any) {
     setTx(""); setAmount(""); reload(); loadMine();
   };
 
+  const copy = (addr: string) => { navigator.clipboard.writeText(addr); toast.success("تم النسخ"); };
+
   return (
     <div className="space-y-4">
       <div className="glass rounded-3xl p-6">
         <h2 className="text-xl font-extrabold">إيداع رصيد</h2>
-        <p className="text-xs text-muted-foreground mt-1">حوّل المبلغ إلى المحفظة أدناه، ثم أرسل طلب الإيداع. تُضاف النقاط إلى رصيدك بعد موافقة الأدمن.</p>
-        <div className="mt-4 bg-secondary/50 rounded-xl p-4">
-          <div className="text-xs text-muted-foreground">الشبكة: {wallet.network || "—"}</div>
-          <div className="font-mono text-sm mt-2 break-all select-all bg-background/40 p-3 rounded-lg">{wallet.address || "لم يحدد بعد"}</div>
-          <button onClick={() => { navigator.clipboard.writeText(wallet.address); toast.success("تم النسخ"); }}
-            className="mt-2 text-xs text-primary">نسخ العنوان</button>
-        </div>
+        {desc && <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{desc}</p>}
+      </div>
+
+      <div className="space-y-3">
+        {wallets.length === 0 && <div className="glass rounded-2xl p-6 text-center text-muted-foreground text-sm">لم تتم إضافة محافظ بعد</div>}
+        {wallets.map(w => (
+          <div key={w.id} className="glass rounded-2xl p-4">
+            <div className="flex justify-between items-start gap-2">
+              <div>
+                <div className="font-bold text-sm">{w.label}</div>
+                {w.network && <div className="text-[11px] text-muted-foreground mt-0.5">{w.network}</div>}
+              </div>
+              <button onClick={()=>copy(w.address)} className="text-xs text-primary font-bold shrink-0">نسخ</button>
+            </div>
+            <div className="font-mono text-xs mt-3 break-all select-all bg-background/40 p-3 rounded-lg">{w.address}</div>
+          </div>
+        ))}
       </div>
 
       <div className="glass rounded-3xl p-6 space-y-3">
