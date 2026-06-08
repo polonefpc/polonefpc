@@ -448,7 +448,7 @@ function Settings() {
   const giftAll = async () => {
     const a = Number(gift);
     if (!a || a <= 0) return toast.error("أدخل قيمة موجبة");
-    if (!confirm(`إضافة ${a}$ لكل العملاء المفعّلين كهدية؟`)) return;
+    if (!confirm(`إضافة ${a}$ للعملاء المفعّلين الذين لديهم باقة فقط؟`)) return;
     setGiftBusy(true);
     const { data: users } = await supabase.from("profiles").select("id, balance").eq("is_active", true).not("package_id", "is", null);
     let n = 0;
@@ -474,7 +474,7 @@ function Settings() {
         <button onClick={runYield} className="btn-primary rounded px-4 py-2 font-bold">تشغيل الآن</button>
       </div>
       <div className="glass rounded-xl p-4">
-        <div className="font-bold mb-1">إهداء نقاط لكل العملاء</div>
+        <div className="font-bold mb-1">إهداء نقاط للحسابات المؤهلة</div>
         <p className="text-xs text-muted-foreground mb-3">يضيف القيمة المدخلة كهدية لرصيد العملاء المفعّلين الذين لديهم باقة فقط.</p>
         <div className="flex gap-2">
           <input type="number" step="0.01" className="flex-1 bg-input border border-border rounded px-3 py-2" placeholder="قيمة الهدية بالدولار" value={gift} onChange={e=>setGift(e.target.value)} />
