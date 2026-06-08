@@ -421,18 +421,31 @@ function Agents() {
 }
 
 function Settings() {
-  const [s, setS] = useState({ deposit_wallet:"", deposit_network:"" });
+  const [desc, setDesc] = useState("");
+  const [wallets, setWallets] = useState<any[]>([]);
+  const [wForm, setWForm] = useState({ label:"", address:"", network:"" });
+  const loadWallets = () => supabase.from("deposit_wallets").select("*").order("sort_order").then(({data})=>setWallets(data ?? []));
   useEffect(()=>{
-    supabase.from("settings").select("*").in("key",["deposit_wallet","deposit_network"]).then(({data})=>{
-      const m:any={}; data?.forEach(r=>m[r.key]=r.value); setS({deposit_wallet:m.deposit_wallet??"",deposit_network:m.deposit_network??""});
-    });
+    supabase.from("settings").select("*").eq("key","deposit_description").maybeSingle().then(({data})=>setDesc(data?.value ?? ""));
+    loadWallets();
   },[]);
-  const save = async () => {
-    await supabase.from("settings").upsert([
-      { key:"deposit_wallet", value:s.deposit_wallet, updated_at: new Date().toISOString() },
-      { key:"deposit_network", value:s.deposit_network, updated_at: new Date().toISOString() },
-    ]);
+  const saveDesc = async () => {
+    await supabase.from("settings").upsert([{ key:"deposit_description", value:desc, updated_at: new Date().toISOString() }]);
     toast.success("تم الحفظ");
+  };
+  const addWallet = async () => {
+    if (!wForm.label || !wForm.address) return toast.error("أدخل الوصف والعنوان");
+    const sort = (wallets[wallets.length-1]?.sort_order ?? 0) + 1;
+    const { error } = await supabase.from("deposit_wallets").insert({ ...wForm, sort_order: sort });
+    if (error) return toast.error(error.message);
+    setWForm({ label:"", address:"", network:"" }); loadWallets(); toast.success("تمت الإضافة");
+  };
+  const delWallet = async (id: string) => {
+    if (!confirm("حذف المحفظة؟")) return;
+    await supabase.from("deposit_wallets").delete().eq("id", id); loadWallets();
+  };
+  const toggleWallet = async (w:any) => {
+    await supabase.from("deposit_wallets").update({ is_active: !w.is_active }).eq("id", w.id); loadWallets();
   };
   const runYield = async () => {
     const res = await fetch("/api/public/cron/daily-yield", {
@@ -440,8 +453,8 @@ function Settings() {
       headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
     });
     const j = await res.json().catch(()=>({}));
-    if (res.ok) toast.success(`تم تشغيل الأرباح • معالجة: ${j.processed ?? 0}`);
-    else toast.error("فشل التشغيل");
+    if (res.ok) toast.success(`تم التشغيل • عدد الحسابات المعالجة: ${j.processed ?? 0}`);
+    else toast.error("فشل التشغيل: " + (j.error ?? res.status));
   };
   const [gift, setGift] = useState("");
   const [giftBusy, setGiftBusy] = useState(false);
@@ -462,17 +475,45 @@ function Settings() {
   return (
     <div className="space-y-3">
       <div className="glass rounded-xl p-4 space-y-2">
-        <label className="text-xs text-muted-foreground">عنوان محفظة الإيداع</label>
-        <input className="w-full bg-input border border-border rounded px-3 py-2" value={s.deposit_wallet} onChange={e=>setS({...s,deposit_wallet:e.target.value})} />
-        <label className="text-xs text-muted-foreground">الشبكة</label>
-        <input className="w-full bg-input border border-border rounded px-3 py-2" value={s.deposit_network} onChange={e=>setS({...s,deposit_network:e.target.value})} />
-        <button onClick={save} className="btn-primary rounded px-4 py-2 font-bold">حفظ</button>
+        <div className="font-bold">وصف عملية الإيداع</div>
+        <textarea rows={3} className="w-full bg-input border border-border rounded px-3 py-2" value={desc} onChange={e=>setDesc(e.target.value)} />
+        <button onClick={saveDesc} className="btn-primary rounded px-4 py-2 font-bold">حفظ الوصف</button>
       </div>
+
+      <div className="glass rounded-xl p-4 space-y-3">
+        <div className="font-bold">محافظ الإيداع</div>
+        <ul className="space-y-2">
+          {wallets.map(w=>(
+            <li key={w.id} className="bg-secondary/40 rounded p-3">
+              <div className="flex justify-between items-start gap-2">
+                <div className="min-w-0">
+                  <div className="font-bold text-sm">{w.label}</div>
+                  <div className="text-[11px] text-muted-foreground">{w.network}</div>
+                  <div className="font-mono text-[11px] break-all mt-1">{w.address}</div>
+                </div>
+                <div className="flex flex-col gap-1 shrink-0">
+                  <button onClick={()=>toggleWallet(w)} className="text-[11px] px-2 py-1 rounded bg-muted">{w.is_active?"إخفاء":"تفعيل"}</button>
+                  <button onClick={()=>delWallet(w.id)} className="text-[11px] px-2 py-1 rounded bg-destructive/20 text-destructive">حذف</button>
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <div className="border-t border-border pt-3 space-y-2">
+          <div className="font-bold text-sm">إضافة محفظة</div>
+          <input className="w-full bg-input border border-border rounded px-3 py-2" placeholder="الوصف (مثال: USDT - TRC20)" value={wForm.label} onChange={e=>setWForm({...wForm,label:e.target.value})}/>
+          <input className="w-full bg-input border border-border rounded px-3 py-2" placeholder="الشبكة" value={wForm.network} onChange={e=>setWForm({...wForm,network:e.target.value})}/>
+          <input className="w-full bg-input border border-border rounded px-3 py-2 font-mono text-xs" placeholder="العنوان" value={wForm.address} onChange={e=>setWForm({...wForm,address:e.target.value})}/>
+          <button onClick={addWallet} className="btn-primary rounded px-4 py-2 font-bold">إضافة</button>
+        </div>
+      </div>
+
       <div className="glass rounded-xl p-4">
         <div className="font-bold mb-1">تشغيل الأرباح اليومية يدوياً</div>
-        <p className="text-xs text-muted-foreground mb-3">تتم تلقائياً يومياً الساعة 00:14. استخدم الزر للتشغيل الفوري عند الحاجة.</p>
+        <p className="text-xs text-muted-foreground mb-3">تتم تلقائياً يومياً الساعة 00:14. تُضاف لكل عميل مفعّل قيمة باقته اليومية مرة واحدة في اليوم.</p>
         <button onClick={runYield} className="btn-primary rounded px-4 py-2 font-bold">تشغيل الآن</button>
       </div>
+
       <div className="glass rounded-xl p-4">
         <div className="font-bold mb-1">إهداء نقاط للحسابات المؤهلة</div>
         <p className="text-xs text-muted-foreground mb-3">يضيف القيمة المدخلة كهدية لرصيد العملاء المفعّلين الذين لديهم باقة فقط.</p>
