@@ -161,6 +161,39 @@ export type Database = {
           },
         ]
       }
+      deposit_wallets: {
+        Row: {
+          address: string
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          network: string | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          network?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          network?: string | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       packages: {
         Row: {
           daily_rate: number
