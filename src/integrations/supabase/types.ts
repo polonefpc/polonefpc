@@ -423,6 +423,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_daily_yields: { Args: { _apply_date?: string }; Returns: number }
       gen_referral_code: { Args: never; Returns: string }
       has_role: {
         Args: {
@@ -430,6 +431,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      process_transfer_points: {
+        Args: { _amount: number; _from_user: string; _to_code: string }
+        Returns: undefined
       }
     }
     Enums: {
