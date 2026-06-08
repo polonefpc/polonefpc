@@ -436,6 +436,10 @@ export type Database = {
         Args: { _amount: number; _from_user: string; _to_code: string }
         Returns: undefined
       }
+      request_package_purchase: {
+        Args: { _package_id: number; _user_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "agent" | "user"
