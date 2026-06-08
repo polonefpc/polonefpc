@@ -45,10 +45,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Polone — منصة التداول الذكي" },
-      { name: "description", content: "polone منصة تداول تلقائي بأرباح يومية تصل إلى 2.3% ونظام إحالات مميز." },
-      { property: "og:title", content: "Polone — منصة التداول الذكي" },
-      { property: "og:description", content: "ربح يومي تلقائي ونظام إحالات." },
+      { title: "Polone — عقود إلكترونية مربحة" },
+      { name: "description", content: "polone منصة عالمية للعقود الإلكترونية مع إيداع وسحب فوري ودعم المحافظ الإلكترونية." },
+      { property: "og:title", content: "Polone — عقود إلكترونية مربحة" },
+      { property: "og:description", content: "منصة عالمية تدعم المحافظ الإلكترونية والإيداع والسحب الفوري." },
       { property: "og:type", content: "website" },
     ],
     links: [
