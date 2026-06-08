@@ -64,16 +64,19 @@ function Landing() {
       </section>
 
       <section className="px-6 pb-20 max-w-6xl mx-auto">
-        <h2 className="text-3xl font-extrabold text-center mb-10">باقات الاستثمار</h2>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <h2 className="text-3xl font-extrabold text-center mb-3">باقات الاستثمار</h2>
+        <p className="text-center text-muted-foreground mb-10 text-sm">منصة عالمية • سحب وإيداع فوري • تدعم جميع المحافظ الإلكترونية</p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {[
-            { p: 90, r: "2.3 USDT" },
-            { p: 130, r: "6.7 USDT" },
-            { p: 320, r: "15.4 USDT" },
-            { p: 985, r: "41.2 USDT" },
-          ].map((b, i) => (
-            <div key={i} className="glass rounded-2xl p-6 text-center hover:scale-105 transition">
-              <div className="text-sm text-muted-foreground">الباقة {i + 1}</div>
+            { p: 90, r: "2.3 USDT", n: "الباقة 1" },
+            { p: 130, r: "6.7 USDT", n: "الباقة 2" },
+            { p: 320, r: "15.4 USDT", n: "الباقة 3" },
+            { p: 985, r: "41.2 USDT", n: "الباقة 4" },
+            { p: 1530, r: "67.1 USDT", n: "الأكثر ربحاً", best: true },
+          ].map((b: any, i) => (
+            <div key={i} className={`relative glass rounded-2xl p-6 text-center hover:scale-105 transition ${b.best ? "ring-2 ring-primary" : ""}`}>
+              {b.best && <span className="absolute -top-3 left-1/2 -translate-x-1/2 btn-primary px-3 py-1 rounded-full text-[10px] font-black whitespace-nowrap">الأكثر ربحاً</span>}
+              <div className="text-sm text-muted-foreground">{b.n}</div>
               <div className="text-4xl font-black mt-2">${b.p}</div>
               <div className="mt-3 text-gradient text-xl font-bold">{b.r} يومياً</div>
             </div>
