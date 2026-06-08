@@ -435,7 +435,10 @@ function Settings() {
     toast.success("تم الحفظ");
   };
   const runYield = async () => {
-    const res = await fetch("/api/public/cron/daily-yield", { method: "POST" });
+    const res = await fetch("/api/public/cron/daily-yield", {
+      method: "POST",
+      headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+    });
     const j = await res.json().catch(()=>({}));
     if (res.ok) toast.success(`تم تشغيل الأرباح • معالجة: ${j.processed ?? 0}`);
     else toast.error("فشل التشغيل");
