@@ -4,7 +4,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const transferSchema = z.object({
   toCode: z.string().regex(/^\d{5}$/),
-  amount: z.number().positive().max(40),
+  amount: z.number().positive(),
 });
 
 const packageSchema = z.object({
