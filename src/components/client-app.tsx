@@ -6,6 +6,7 @@ import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, ShoppingBag, Share2, Lo
 import { toast } from "sonner";
 import type { Role } from "@/lib/auth";
 import { requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
+import { LanguageSwitch } from "@/components/language-switch";
 
 type Tab = "home" | "deposit" | "withdraw" | "local" | "shop" | "referral";
 
@@ -29,12 +30,13 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
 
   return (
     <div className="min-h-screen pb-24">
-      <header className="sticky top-0 z-20 px-4 py-3 glass border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <header className="sticky top-0 z-20 px-4 py-3 glass border-b border-border flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <div className="w-8 h-8 rounded-lg btn-primary grid place-items-center font-black text-sm">P</div>
           <span className="font-extrabold">polone</span>
         </div>
-        <div className="flex items-center gap-2">
+        <LanguageSwitch />
+        <div className="flex items-center gap-2 shrink-0">
           {roles.includes("admin") && (
             <Link to="/admin" className="glass px-3 py-1.5 rounded-lg text-xs flex items-center gap-1">
               <Crown className="w-3.5 h-3.5 text-primary" /> أدمن
@@ -240,17 +242,18 @@ export function WithdrawTab({ profile, reload }: any) {
   const [amt, setAmt] = useState("");
   const [loading, setLoading] = useState(false);
   const transferPointsFn = useServerFn(transferPoints);
+  const active = !!profile?.is_active;
 
   const submitWithdraw = async () => {
+    if (!active) { toast.error("حسابك غير مفعّل — لا يمكن السحب"); return; }
     const a = Number(amt);
-    if (!a || a <= 0 || a > 40) { toast.error("الحد الأقصى للسحب 40$"); return; }
+    if (!a || a < 49) { toast.error("الحد الأدنى للسحب 49$"); return; }
     if (!wallet.trim()) { toast.error("أدخل عنوان المحفظة"); return; }
     if (a > Number(profile?.balance ?? 0)) { toast.error("رصيد غير كافٍ"); return; }
     setLoading(true);
     const { data: u } = await supabase.auth.getUser();
     const { error } = await supabase.from("withdrawals").insert({ user_id: u.user!.id, wallet_address: wallet, amount: a });
     if (error) { setLoading(false); toast.error(error.message); return; }
-    // Deduct immediately
     await supabase.from("profiles").update({ balance: Number(profile.balance) - a }).eq("id", u.user!.id);
     setLoading(false);
     toast.success("تم إرسال طلب السحب وخصم النقاط");
@@ -258,8 +261,9 @@ export function WithdrawTab({ profile, reload }: any) {
   };
 
   const submitTransfer = async () => {
+    if (!active) { toast.error("حسابك غير مفعّل — لا يمكن التحويل"); return; }
     const a = Number(amt);
-    if (!a || a <= 0 || a > 40) { toast.error("الحد الأقصى للتحويل 40$"); return; }
+    if (!a || a <= 0) { toast.error("أدخل مبلغاً صحيحاً"); return; }
     if (a > Number(profile?.balance ?? 0)) { toast.error("رصيد غير كافٍ"); return; }
     if (!/^\d{5}$/.test(toCode.trim())) { toast.error("أدخل رمز إحالة من 5 أرقام"); return; }
     setLoading(true);
@@ -272,6 +276,11 @@ export function WithdrawTab({ profile, reload }: any) {
 
   return (
     <div className="space-y-4">
+      {!active && (
+        <div className="glass rounded-2xl p-4 border border-destructive/40 text-sm text-destructive">
+          حسابك غير مفعّل. لا يمكنك السحب أو التحويل قبل تفعيل باقة من «السلة».
+        </div>
+      )}
       <div className="glass rounded-2xl p-2 flex">
         <button onClick={()=>setMode("withdraw")} className={`flex-1 py-2.5 rounded-xl font-bold text-sm ${mode==="withdraw"?"btn-primary":"text-muted-foreground"}`}>سحب</button>
         <button onClick={()=>setMode("transfer")} className={`flex-1 py-2.5 rounded-xl font-bold text-sm ${mode==="transfer"?"btn-primary":"text-muted-foreground"}`}>تحويل</button>
@@ -288,11 +297,11 @@ export function WithdrawTab({ profile, reload }: any) {
             <input inputMode="numeric" maxLength={5} className="w-full bg-input border border-border rounded-xl px-4 py-3 text-center tracking-widest text-lg font-bold"
               placeholder="رمز المستلم (5 أرقام)" value={toCode} onChange={e=>setToCode(e.target.value.replace(/\D/g,""))} />
           )}
-          <input type="number" step="0.01" max={40} className="w-full bg-input border border-border rounded-xl px-4 py-3"
-            placeholder="المبلغ (حد أقصى 40$)" value={amt} onChange={e=>setAmt(e.target.value)} />
-          <button disabled={loading} onClick={mode==="withdraw"?submitWithdraw:submitTransfer}
+          <input type="number" step="0.01" min={mode==="withdraw"?49:0.01} className="w-full bg-input border border-border rounded-xl px-4 py-3"
+            placeholder={mode==="withdraw" ? "المبلغ (الحد الأدنى 49$)" : "المبلغ"} value={amt} onChange={e=>setAmt(e.target.value)} />
+          <button disabled={loading || !active} onClick={mode==="withdraw"?submitWithdraw:submitTransfer}
             className="btn-primary w-full rounded-xl py-3 font-bold">{loading?"...":mode==="withdraw"?"طلب السحب":"تحويل النقاط"}</button>
-          <p className="text-xs text-muted-foreground">تُخصم النقاط تلقائياً عند إرسال العملية. في حال رفض السحب تُعاد إلى رصيدك.</p>
+          <p className="text-xs text-muted-foreground">الحد الأدنى للسحب 49$ ولا يوجد حد أعلى. التحويل متاح فقط بين الحسابات المفعّلة.</p>
         </div>
       </div>
     </div>
