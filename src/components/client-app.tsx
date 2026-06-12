@@ -6,6 +6,7 @@ import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, ShoppingBag, Share2, Lo
 import { toast } from "sonner";
 import type { Role } from "@/lib/auth";
 import { requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
+import { LanguageSwitch } from "@/components/language-switch";
 
 type Tab = "home" | "deposit" | "withdraw" | "local" | "shop" | "referral";
 
