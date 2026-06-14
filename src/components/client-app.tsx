@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, ShoppingBag, Share2, LogOut, Crown, Shield } from "lucide-react";
+import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, ShoppingBag, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy } from "lucide-react";
 import { toast } from "sonner";
 import type { Role } from "@/lib/auth";
 import { requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
@@ -93,41 +93,59 @@ export function useProfile() {
 // ───────── tabs ─────────
 export function HomeTab({ profile, packages, refs, yields }: any) {
   const pkg = packages.find((p: any) => p.id === profile?.package_id);
+  const [showBal, setShowBal] = useState(false);
+  const code = profile?.referral_code ?? "—";
+  const copyCode = () => { if (profile?.referral_code) { navigator.clipboard.writeText(code); toast.success("تم نسخ رمز الإحالة"); } };
 
   return (
     <div className="space-y-4">
-      <div className="glass rounded-3xl p-6">
-        <div className="flex justify-between items-start">
-          <div>
-            <div className="text-xs text-muted-foreground">المحفظة الرقمية</div>
-            <div className="text-4xl font-black text-gradient mt-1">${Number(profile?.balance ?? 0).toFixed(2)}</div>
+      {/* رمز الإحالة خارج المستطيل من الأعلى */}
+      <div className="flex items-center justify-between glass rounded-2xl px-4 py-3">
+        <div>
+          <div className="text-[11px] text-muted-foreground">رمز الإحالة / معرّف الحساب</div>
+          <div className="font-black text-xl tracking-[0.4em] text-primary select-all mt-0.5">{code}</div>
+        </div>
+        <button onClick={copyCode} className="glass p-2 rounded-lg" title="نسخ">
+          <Copy className="w-4 h-4 text-primary" />
+        </button>
+      </div>
+
+      {/* مستطيل الملف التعريفي */}
+      <div className="glass rounded-2xl p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-[11px] text-muted-foreground">المحفظة الرقمية</div>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="text-3xl font-black text-gradient leading-none">
+                {showBal ? `$${Number(profile?.balance ?? 0).toFixed(2)}` : "******"}
+              </div>
+              <button
+                onClick={() => setShowBal(s => !s)}
+                className="p-1.5 rounded-md hover:bg-secondary/60 text-muted-foreground"
+                title={showBal ? "إخفاء" : "إظهار"}
+                aria-label="toggle balance"
+              >
+                {showBal ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
-          <span className={`px-3 py-1 rounded-full text-xs font-bold ${profile?.is_active ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>
+          <span className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold ${profile?.is_active ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>
             {profile?.is_active ? "مفعّل" : "غير مفعّل"}
           </span>
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+        <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
           <div className="bg-secondary/50 rounded-xl p-3">
-            <div className="text-muted-foreground text-xs">الباقة</div>
-            <div className="font-bold mt-0.5">{pkg ? `${pkg.name} • $${pkg.price}` : "—"}</div>
+            <div className="text-muted-foreground text-[11px]">الاسم</div>
+            <div className="font-bold mt-0.5 truncate text-sm">{profile?.full_name ?? "—"}</div>
           </div>
           <div className="bg-secondary/50 rounded-xl p-3">
-            <div className="text-muted-foreground text-xs">رمز الإحالة</div>
-            <div className="font-black mt-0.5 text-primary tracking-widest text-lg">{profile?.referral_code ?? "—"}</div>
+            <div className="text-muted-foreground text-[11px]">الباقة</div>
+            <div className="font-bold mt-0.5 truncate text-sm">{pkg ? pkg.name : "—"}</div>
           </div>
           <div className="bg-secondary/50 rounded-xl p-3">
-            <div className="text-muted-foreground text-xs">الاسم</div>
-            <div className="font-bold mt-0.5 truncate">{profile?.full_name ?? "—"}</div>
+            <div className="text-muted-foreground text-[11px]">الإحالات</div>
+            <div className="font-bold mt-0.5 text-sm">{refs.length}</div>
           </div>
-          <div className="bg-secondary/50 rounded-xl p-3">
-            <div className="text-muted-foreground text-xs">عدد الإحالات</div>
-            <div className="font-bold mt-0.5">{refs.length}</div>
-          </div>
-        </div>
-        <div className="mt-4 bg-secondary/50 rounded-xl p-3 text-center">
-          <div className="text-muted-foreground text-xs">معرّف الحساب</div>
-          <div className="font-black text-2xl mt-1 tracking-[0.4em] text-primary select-all">{profile?.referral_code ?? "—"}</div>
-          <div className="text-[10px] text-muted-foreground mt-1">المعرّف ورمز الإحالة موحّدان</div>
         </div>
       </div>
 
@@ -138,7 +156,7 @@ export function HomeTab({ profile, packages, refs, yields }: any) {
             {yields.map((y: any) => (
               <li key={y.id} className="flex justify-between py-2">
                 <span>{y.applied_on}</span>
-                <span className="text-success font-bold">+${Number(y.amount).toFixed(2)}</span>
+                <span className="text-success font-bold">{showBal ? `+$${Number(y.amount).toFixed(2)}` : "+$***"}</span>
               </li>
             ))}
           </ul>}
@@ -146,6 +164,7 @@ export function HomeTab({ profile, packages, refs, yields }: any) {
     </div>
   );
 }
+
 
 
 export function DepositTab({ reload }: any) {
@@ -191,16 +210,29 @@ export function DepositTab({ reload }: any) {
         {wallets.length === 0 && <div className="glass rounded-2xl p-6 text-center text-muted-foreground text-sm">لم تتم إضافة محافظ بعد</div>}
         {wallets.map(w => (
           <div key={w.id} className="glass rounded-2xl p-4">
-            <div className="flex justify-between items-start gap-2">
-              <div>
-                <div className="font-bold text-sm">{w.label}</div>
-                {w.network && <div className="text-[11px] text-muted-foreground mt-0.5">{w.network}</div>}
+            <div className="flex items-start gap-3">
+              {w.image_url ? (
+                <img src={w.image_url} alt={w.label} className="w-14 h-14 rounded-xl object-cover bg-background/40 shrink-0" />
+              ) : (
+                <div className="w-14 h-14 rounded-xl bg-background/40 grid place-items-center text-xs text-muted-foreground shrink-0">{w.currency ?? "—"}</div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm truncate">{w.label}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5 flex flex-wrap gap-x-2">
+                      {w.currency && <span className="text-primary font-bold">{w.currency}</span>}
+                      {w.network && <span>{w.network}</span>}
+                    </div>
+                  </div>
+                  <button onClick={()=>copy(w.address)} className="text-xs text-primary font-bold shrink-0">نسخ</button>
+                </div>
               </div>
-              <button onClick={()=>copy(w.address)} className="text-xs text-primary font-bold shrink-0">نسخ</button>
             </div>
             <div className="font-mono text-xs mt-3 break-all select-all bg-background/40 p-3 rounded-lg">{w.address}</div>
           </div>
         ))}
+
       </div>
 
       <div className="glass rounded-3xl p-6 space-y-3">

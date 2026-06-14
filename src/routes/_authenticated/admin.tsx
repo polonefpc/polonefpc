@@ -423,7 +423,8 @@ function Agents() {
 function Settings() {
   const [desc, setDesc] = useState("");
   const [wallets, setWallets] = useState<any[]>([]);
-  const [wForm, setWForm] = useState({ label:"", address:"", network:"" });
+  const [wForm, setWForm] = useState({ label:"", address:"", network:"", currency:"", image_url:"" });
+  const [wUploading, setWUploading] = useState(false);
   const loadWallets = () => supabase.from("deposit_wallets").select("*").order("sort_order").then(({data})=>setWallets(data ?? []));
   useEffect(()=>{
     supabase.from("settings").select("*").eq("key","deposit_description").maybeSingle().then(({data})=>setDesc(data?.value ?? ""));
@@ -433,12 +434,36 @@ function Settings() {
     await supabase.from("settings").upsert([{ key:"deposit_description", value:desc, updated_at: new Date().toISOString() }]);
     toast.success("تم الحفظ");
   };
+  const compressImg = (file: File) => new Promise<string>((res, rej) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const max = 400;
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = img.width * scale, h = img.height * scale;
+        const c = document.createElement("canvas");
+        c.width = w; c.height = h;
+        c.getContext("2d")!.drawImage(img, 0, 0, w, h);
+        res(c.toDataURL("image/jpeg", 0.8));
+      };
+      img.onerror = rej;
+      img.src = reader.result as string;
+    };
+    reader.onerror = rej;
+    reader.readAsDataURL(file);
+  });
+  const onWalletFile = async (file: File) => {
+    setWUploading(true);
+    try { const url = await compressImg(file); setWForm(f => ({ ...f, image_url: url })); }
+    finally { setWUploading(false); }
+  };
   const addWallet = async () => {
     if (!wForm.label || !wForm.address) return toast.error("أدخل الوصف والعنوان");
     const sort = (wallets[wallets.length-1]?.sort_order ?? 0) + 1;
     const { error } = await supabase.from("deposit_wallets").insert({ ...wForm, sort_order: sort });
     if (error) return toast.error(error.message);
-    setWForm({ label:"", address:"", network:"" }); loadWallets(); toast.success("تمت الإضافة");
+    setWForm({ label:"", address:"", network:"", currency:"", image_url:"" }); loadWallets(); toast.success("تمت الإضافة");
   };
   const delWallet = async (id: string) => {
     if (!confirm("حذف المحفظة؟")) return;
@@ -446,6 +471,11 @@ function Settings() {
   };
   const toggleWallet = async (w:any) => {
     await supabase.from("deposit_wallets").update({ is_active: !w.is_active }).eq("id", w.id); loadWallets();
+  };
+  const updateWalletImage = async (id: string, file: File) => {
+    const url = await compressImg(file);
+    await supabase.from("deposit_wallets").update({ image_url: url }).eq("id", id);
+    loadWallets(); toast.success("تم تحديث الصورة");
   };
   const runYield = async () => {
     const res = await fetch("/api/public/cron/daily-yield", {
@@ -486,12 +516,23 @@ function Settings() {
           {wallets.map(w=>(
             <li key={w.id} className="bg-secondary/40 rounded p-3">
               <div className="flex justify-between items-start gap-2">
-                <div className="min-w-0">
-                  <div className="font-bold text-sm">{w.label}</div>
-                  <div className="text-[11px] text-muted-foreground">{w.network}</div>
-                  <div className="font-mono text-[11px] break-all mt-1">{w.address}</div>
+                <div className="flex gap-3 min-w-0 flex-1">
+                  {w.image_url ? (
+                    <img src={w.image_url} alt={w.label} className="w-12 h-12 rounded object-cover shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 rounded bg-background/40 grid place-items-center text-[10px] text-muted-foreground shrink-0">لا صورة</div>
+                  )}
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm">{w.label}</div>
+                    <div className="text-[11px] text-muted-foreground">{w.currency ?? ""} {w.network ? `• ${w.network}` : ""}</div>
+                    <div className="font-mono text-[11px] break-all mt-1">{w.address}</div>
+                  </div>
                 </div>
                 <div className="flex flex-col gap-1 shrink-0">
+                  <label className="text-[11px] px-2 py-1 rounded bg-muted cursor-pointer text-center">
+                    تغيير الصورة
+                    <input type="file" accept="image/*" className="hidden" onChange={e=>e.target.files?.[0] && updateWalletImage(w.id, e.target.files[0])} />
+                  </label>
                   <button onClick={()=>toggleWallet(w)} className="text-[11px] px-2 py-1 rounded bg-muted">{w.is_active?"إخفاء":"تفعيل"}</button>
                   <button onClick={()=>delWallet(w.id)} className="text-[11px] px-2 py-1 rounded bg-destructive/20 text-destructive">حذف</button>
                 </div>
@@ -502,11 +543,23 @@ function Settings() {
         <div className="border-t border-border pt-3 space-y-2">
           <div className="font-bold text-sm">إضافة محفظة</div>
           <input className="w-full bg-input border border-border rounded px-3 py-2" placeholder="الوصف (مثال: USDT - TRC20)" value={wForm.label} onChange={e=>setWForm({...wForm,label:e.target.value})}/>
-          <input className="w-full bg-input border border-border rounded px-3 py-2" placeholder="الشبكة" value={wForm.network} onChange={e=>setWForm({...wForm,network:e.target.value})}/>
+          <div className="grid grid-cols-2 gap-2">
+            <input className="bg-input border border-border rounded px-3 py-2" placeholder="نوع العملة (USDT, BTC...)" value={wForm.currency} onChange={e=>setWForm({...wForm,currency:e.target.value})}/>
+            <input className="bg-input border border-border rounded px-3 py-2" placeholder="الشبكة" value={wForm.network} onChange={e=>setWForm({...wForm,network:e.target.value})}/>
+          </div>
           <input className="w-full bg-input border border-border rounded px-3 py-2 font-mono text-xs" placeholder="العنوان" value={wForm.address} onChange={e=>setWForm({...wForm,address:e.target.value})}/>
+          <div className="flex items-center gap-2">
+            <label className="btn-primary rounded px-3 py-2 text-xs font-bold cursor-pointer">
+              {wUploading ? "..." : "صورة المحفظة من الجهاز"}
+              <input type="file" accept="image/*" className="hidden" onChange={e=>e.target.files?.[0] && onWalletFile(e.target.files[0])} />
+            </label>
+            {wForm.image_url && <img src={wForm.image_url} className="w-10 h-10 rounded object-cover" />}
+            {wForm.image_url && <button onClick={()=>setWForm({...wForm,image_url:""})} className="text-destructive text-xs">إزالة</button>}
+          </div>
           <button onClick={addWallet} className="btn-primary rounded px-4 py-2 font-bold">إضافة</button>
         </div>
       </div>
+
 
       <div className="glass rounded-xl p-4">
         <div className="font-bold mb-1">تشغيل الأرباح اليومية يدوياً</div>

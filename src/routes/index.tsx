@@ -2,6 +2,8 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { ShieldCheck, TrendingUp, Users, Wallet, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LanguageSwitch, useLang, t } from "@/components/language-switch";
+import heroAsset from "@/assets/polone-hero.png.asset.json";
+
 
 export const Route = createFileRoute("/")({
   beforeLoad: async () => {
@@ -37,7 +39,10 @@ function Landing() {
         </nav>
       </header>
 
-      <section className="px-6 pt-16 pb-24 max-w-6xl mx-auto text-center">
+      <section className="relative px-6 pt-10 pb-24 max-w-6xl mx-auto text-center">
+        <div className="mx-auto mb-8 w-full max-w-md aspect-square rounded-3xl overflow-hidden">
+          <img src={heroAsset.url} alt="polone" className="w-full h-full object-contain" />
+        </div>
         <span className="inline-block glass px-4 py-1.5 rounded-full text-xs text-primary mb-6">{t("hero_badge", lang)}</span>
         <h1 className="text-5xl md:text-7xl font-black leading-tight">
           polone<br/>
@@ -51,6 +56,7 @@ function Landing() {
           <Link to="/auth/login" className="glass px-8 py-4 rounded-2xl font-bold">{t("cta_have", lang)}</Link>
         </div>
       </section>
+
 
       <section className="px-6 pb-20 max-w-6xl mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
