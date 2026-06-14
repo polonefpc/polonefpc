@@ -210,16 +210,29 @@ export function DepositTab({ reload }: any) {
         {wallets.length === 0 && <div className="glass rounded-2xl p-6 text-center text-muted-foreground text-sm">لم تتم إضافة محافظ بعد</div>}
         {wallets.map(w => (
           <div key={w.id} className="glass rounded-2xl p-4">
-            <div className="flex justify-between items-start gap-2">
-              <div>
-                <div className="font-bold text-sm">{w.label}</div>
-                {w.network && <div className="text-[11px] text-muted-foreground mt-0.5">{w.network}</div>}
+            <div className="flex items-start gap-3">
+              {w.image_url ? (
+                <img src={w.image_url} alt={w.label} className="w-14 h-14 rounded-xl object-cover bg-background/40 shrink-0" />
+              ) : (
+                <div className="w-14 h-14 rounded-xl bg-background/40 grid place-items-center text-xs text-muted-foreground shrink-0">{w.currency ?? "—"}</div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="min-w-0">
+                    <div className="font-bold text-sm truncate">{w.label}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5 flex flex-wrap gap-x-2">
+                      {w.currency && <span className="text-primary font-bold">{w.currency}</span>}
+                      {w.network && <span>{w.network}</span>}
+                    </div>
+                  </div>
+                  <button onClick={()=>copy(w.address)} className="text-xs text-primary font-bold shrink-0">نسخ</button>
+                </div>
               </div>
-              <button onClick={()=>copy(w.address)} className="text-xs text-primary font-bold shrink-0">نسخ</button>
             </div>
             <div className="font-mono text-xs mt-3 break-all select-all bg-background/40 p-3 rounded-lg">{w.address}</div>
           </div>
         ))}
+
       </div>
 
       <div className="glass rounded-3xl p-6 space-y-3">
