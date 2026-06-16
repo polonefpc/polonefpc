@@ -36,7 +36,10 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
           <div className="w-8 h-8 rounded-lg btn-primary grid place-items-center font-black text-sm">P</div>
           <span className="font-extrabold">polone</span>
         </div>
-        <LanguageSwitch />
+        <div className="flex items-center gap-2">
+          <HelpButton />
+          <LanguageSwitch />
+        </div>
         <div className="flex items-center gap-2 shrink-0">
           {roles.includes("admin") && (
             <Link to="/admin" className="glass px-3 py-1.5 rounded-lg text-xs flex items-center gap-1">
