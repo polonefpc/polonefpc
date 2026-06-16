@@ -24,7 +24,8 @@ function Landing() {
   const lang = useLang();
   return (
     <div className="min-h-screen">
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40">
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2">
+        <HelpButton />
         <LanguageSwitch />
       </div>
 
