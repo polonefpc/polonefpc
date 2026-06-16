@@ -57,6 +57,8 @@ function Admin() {
         {tab === "products" && <Products />}
         {tab === "contacts" && <Contacts />}
         {tab === "agents" && <Agents />}
+        {tab === "help" && <HelpAdmin />}
+        {tab === "pkgchange" && <PkgChangeAdmin />}
         {tab === "settings" && <Settings />}
       </div>
     </div>
