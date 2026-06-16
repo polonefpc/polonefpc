@@ -6,15 +6,17 @@ import { ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({ component: Admin });
 
-type Tab = "deposits" | "withdrawals" | "orders" | "users" | "products" | "agents" | "contacts" | "settings";
+type Tab = "deposits" | "withdrawals" | "orders" | "users" | "products" | "agents" | "contacts" | "settings" | "help" | "pkgchange";
 const TABS: { id: Tab; label: string }[] = [
   { id: "deposits", label: "طلبات الإيداع" },
   { id: "withdrawals", label: "طلبات السحب" },
+  { id: "pkgchange", label: "طلبات تغيير الباقة" },
   { id: "orders", label: "طلبات المنتجات" },
   { id: "users", label: "المستخدمون" },
   { id: "products", label: "المنتجات" },
   { id: "contacts", label: "وكلاء الإيداع" },
   { id: "agents", label: "تعيين وكلاء" },
+  { id: "help", label: "أقسام المساعدة" },
   { id: "settings", label: "الإعدادات" },
 ];
 
