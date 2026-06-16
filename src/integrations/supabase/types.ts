@@ -200,6 +200,93 @@ export type Database = {
         }
         Relationships: []
       }
+      help_sections: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          sort_order: number
+          title: string
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          title?: string
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: []
+      }
+      package_change_requests: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          from_package_id: number | null
+          id: string
+          note: string | null
+          points_required: number
+          status: string
+          to_package_id: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          from_package_id?: number | null
+          id?: string
+          note?: string | null
+          points_required?: number
+          status?: string
+          to_package_id: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          from_package_id?: number | null
+          id?: string
+          note?: string | null
+          points_required?: number
+          status?: string
+          to_package_id?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "package_change_requests_from_package_id_fkey"
+            columns: ["from_package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_change_requests_to_package_id_fkey"
+            columns: ["to_package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       packages: {
         Row: {
           daily_rate: number
@@ -463,6 +550,10 @@ export type Database = {
     }
     Functions: {
       apply_daily_yields: { Args: { _apply_date?: string }; Returns: number }
+      approve_package_change: {
+        Args: { _request_id: string }
+        Returns: undefined
+      }
       gen_referral_code: { Args: never; Returns: string }
       has_role: {
         Args: {
@@ -474,6 +565,14 @@ export type Database = {
       process_transfer_points: {
         Args: { _amount: number; _from_user: string; _to_code: string }
         Returns: undefined
+      }
+      reject_package_change: {
+        Args: { _admin_note: string; _request_id: string }
+        Returns: undefined
+      }
+      request_package_change: {
+        Args: { _note: string; _to_package_id: number; _user_id: string }
+        Returns: string
       }
       request_package_purchase: {
         Args: { _package_id: number; _user_id: string }

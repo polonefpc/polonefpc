@@ -2,7 +2,7 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { ShieldCheck, TrendingUp, Users, Wallet, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LanguageSwitch, useLang, t } from "@/components/language-switch";
-import heroAsset from "@/assets/polone-hero.png.asset.json";
+import { HelpButton } from "@/components/help-button";
 
 
 export const Route = createFileRoute("/")({
@@ -24,7 +24,8 @@ function Landing() {
   const lang = useLang();
   return (
     <div className="min-h-screen">
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40">
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2">
+        <HelpButton />
         <LanguageSwitch />
       </div>
 
@@ -40,9 +41,6 @@ function Landing() {
       </header>
 
       <section className="relative px-6 pt-10 pb-24 max-w-6xl mx-auto text-center">
-        <div className="mx-auto mb-8 w-full max-w-md aspect-square rounded-3xl overflow-hidden">
-          <img src={heroAsset.url} alt="polone" className="w-full h-full object-contain" />
-        </div>
         <span className="inline-block glass px-4 py-1.5 rounded-full text-xs text-primary mb-6">{t("hero_badge", lang)}</span>
         <h1 className="text-5xl md:text-7xl font-black leading-tight">
           polone<br/>

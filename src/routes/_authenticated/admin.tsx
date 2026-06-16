@@ -6,15 +6,17 @@ import { ArrowLeft } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({ component: Admin });
 
-type Tab = "deposits" | "withdrawals" | "orders" | "users" | "products" | "agents" | "contacts" | "settings";
+type Tab = "deposits" | "withdrawals" | "orders" | "users" | "products" | "agents" | "contacts" | "settings" | "help" | "pkgchange";
 const TABS: { id: Tab; label: string }[] = [
   { id: "deposits", label: "طلبات الإيداع" },
   { id: "withdrawals", label: "طلبات السحب" },
+  { id: "pkgchange", label: "طلبات تغيير الباقة" },
   { id: "orders", label: "طلبات المنتجات" },
   { id: "users", label: "المستخدمون" },
   { id: "products", label: "المنتجات" },
   { id: "contacts", label: "وكلاء الإيداع" },
   { id: "agents", label: "تعيين وكلاء" },
+  { id: "help", label: "أقسام المساعدة" },
   { id: "settings", label: "الإعدادات" },
 ];
 
@@ -55,6 +57,8 @@ function Admin() {
         {tab === "products" && <Products />}
         {tab === "contacts" && <Contacts />}
         {tab === "agents" && <Agents />}
+        {tab === "help" && <HelpAdmin />}
+        {tab === "pkgchange" && <PkgChangeAdmin />}
         {tab === "settings" && <Settings />}
       </div>
     </div>
@@ -586,3 +590,116 @@ function StatusBadge({ status }: { status: string }) {
   return <span className={`text-xs px-2 py-1 rounded ${map[status]}`}>{labels[status]}</span>;
 }
 function Empty() { return <div className="glass rounded-xl p-8 text-center text-muted-foreground">لا توجد عناصر</div>; }
+
+function HelpAdmin() {
+  const [items, setItems] = useState<any[]>([]);
+  const [form, setForm] = useState({ title: "", description: "", video_url: "", sort_order: 0 });
+  const load = () => (supabase as any).from("help_sections").select("*").order("sort_order").then(({ data }: any) => setItems(data ?? []));
+  useEffect(() => { load(); }, []);
+
+  const add = async () => {
+    if (!form.title.trim()) { toast.error("أدخل عنوان القسم"); return; }
+    const { error } = await (supabase as any).from("help_sections").insert({
+      title: form.title, description: form.description, video_url: form.video_url || null, sort_order: Number(form.sort_order) || 0,
+    });
+    if (error) return toast.error(error.message);
+    toast.success("تمت الإضافة"); setForm({ title: "", description: "", video_url: "", sort_order: 0 }); load();
+  };
+
+  const update = async (id: string, patch: any) => {
+    const { error } = await (supabase as any).from("help_sections").update(patch).eq("id", id);
+    if (error) return toast.error(error.message);
+    load();
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm("حذف هذا القسم؟")) return;
+    await (supabase as any).from("help_sections").delete().eq("id", id);
+    toast.success("تم الحذف"); load();
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="glass rounded-xl p-4 space-y-2">
+        <h3 className="font-bold">إضافة قسم مساعدة</h3>
+        <input className="w-full bg-input border border-border rounded px-3 py-2" placeholder="عنوان القسم"
+          value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+        <textarea rows={4} className="w-full bg-input border border-border rounded px-3 py-2" placeholder="الوصف الكامل"
+          value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+        <input className="w-full bg-input border border-border rounded px-3 py-2" placeholder="رابط الفيديو (YouTube أو رابط mp4 — اختياري)"
+          value={form.video_url} onChange={e => setForm({ ...form, video_url: e.target.value })} />
+        <input type="number" className="w-32 bg-input border border-border rounded px-3 py-2" placeholder="الترتيب"
+          value={form.sort_order} onChange={e => setForm({ ...form, sort_order: Number(e.target.value) })} />
+        <button onClick={add} className="btn-primary rounded px-4 py-2 font-bold">إضافة</button>
+      </div>
+
+      {items.length === 0 && <Empty />}
+      {items.map((s: any) => (
+        <div key={s.id} className="glass rounded-xl p-4 space-y-2">
+          <input defaultValue={s.title} onBlur={e => e.target.value !== s.title && update(s.id, { title: e.target.value })}
+            className="w-full bg-input border border-border rounded px-3 py-2 font-bold" />
+          <textarea rows={3} defaultValue={s.description} onBlur={e => e.target.value !== s.description && update(s.id, { description: e.target.value })}
+            className="w-full bg-input border border-border rounded px-3 py-2 text-sm" />
+          <input defaultValue={s.video_url ?? ""} onBlur={e => update(s.id, { video_url: e.target.value || null })}
+            placeholder="رابط الفيديو" className="w-full bg-input border border-border rounded px-3 py-2 text-sm" />
+          <div className="flex items-center gap-3 text-sm">
+            <label className="flex items-center gap-1">
+              <input type="checkbox" defaultChecked={s.is_active} onChange={e => update(s.id, { is_active: e.target.checked })} />
+              مفعّل
+            </label>
+            <input type="number" defaultValue={s.sort_order} onBlur={e => update(s.id, { sort_order: Number(e.target.value) })}
+              className="w-20 bg-input border border-border rounded px-2 py-1" />
+            <button onClick={() => remove(s.id)} className="ml-auto bg-destructive/90 text-destructive-foreground rounded px-3 py-1 text-xs font-bold">حذف</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PkgChangeAdmin() {
+  const [items, setItems] = useState<any[]>([]);
+  const load = () => (supabase as any).from("package_change_requests")
+    .select("*,profile:profiles!package_change_requests_user_id_fkey(email,full_name,referral_code,balance),from_pkg:packages!package_change_requests_from_package_id_fkey(name,price),to_pkg:packages!package_change_requests_to_package_id_fkey(name,price)")
+    .order("created_at", { ascending: false }).then(({ data }: any) => setItems(data ?? []));
+  useEffect(() => { load(); }, []);
+
+  const approve = async (id: string) => {
+    const { error } = await (supabase as any).rpc("approve_package_change", { _request_id: id });
+    if (error) return toast.error(error.message);
+    toast.success("تمت الموافقة"); load();
+  };
+  const reject = async (id: string) => {
+    const note = prompt("سبب الرفض (اختياري):") ?? "";
+    const { error } = await (supabase as any).rpc("reject_package_change", { _request_id: id, _admin_note: note });
+    if (error) return toast.error(error.message);
+    toast.success("تم الرفض"); load();
+  };
+
+  return (
+    <div className="space-y-2">
+      {items.length === 0 && <Empty />}
+      {items.map((r: any) => (
+        <div key={r.id} className="glass rounded-xl p-4">
+          <div className="flex justify-between items-start gap-2">
+            <div>
+              <div className="font-bold">{r.profile?.full_name ?? r.profile?.email}</div>
+              <div className="text-xs text-muted-foreground">{r.profile?.email} • ID: <b className="font-mono">{r.profile?.referral_code}</b> • رصيد: ${Number(r.profile?.balance ?? 0).toFixed(2)}</div>
+              <div className="text-sm mt-1">من <b>{r.from_pkg?.name ?? "—"}</b> (${r.from_pkg?.price ?? 0}) → <b>{r.to_pkg?.name ?? "—"}</b> (${r.to_pkg?.price ?? 0})</div>
+              <div className="text-xs mt-0.5">الفرق المطلوب خصمه: <b className="text-primary">${Number(r.points_required).toFixed(2)}</b></div>
+              {r.note && <div className="text-xs mt-1 bg-secondary/40 rounded p-2 whitespace-pre-wrap">📝 {r.note}</div>}
+              {r.admin_note && <div className="text-xs mt-1 text-destructive">ملاحظة الأدمن: {r.admin_note}</div>}
+            </div>
+            <StatusBadge status={r.status} />
+          </div>
+          {r.status === "pending" && (
+            <div className="flex gap-2 mt-3">
+              <button onClick={() => approve(r.id)} className="bg-success/90 text-success-foreground px-3 py-1.5 rounded-lg text-sm font-bold">قبول وتفعيل</button>
+              <button onClick={() => reject(r.id)} className="bg-destructive/90 text-destructive-foreground px-3 py-1.5 rounded-lg text-sm font-bold">رفض</button>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
