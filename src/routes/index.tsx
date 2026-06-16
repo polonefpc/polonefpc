@@ -2,7 +2,7 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { ShieldCheck, TrendingUp, Users, Wallet, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { LanguageSwitch, useLang, t } from "@/components/language-switch";
-import heroAsset from "@/assets/polone-hero.png.asset.json";
+import { HelpButton } from "@/components/help-button";
 
 
 export const Route = createFileRoute("/")({
