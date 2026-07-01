@@ -1,8 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
+import { approvePackageChange, rejectPackageChange } from "@/lib/trading.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({ component: Admin });
 
@@ -663,20 +665,22 @@ function HelpAdmin() {
 
 function PkgChangeAdmin() {
   const [items, setItems] = useState<any[]>([]);
+  const approvePackageChangeFn = useServerFn(approvePackageChange);
+  const rejectPackageChangeFn = useServerFn(rejectPackageChange);
   const load = () => (supabase as any).from("package_change_requests")
     .select("*,profile:profiles!package_change_requests_user_id_fkey(email,full_name,referral_code,balance),from_pkg:packages!package_change_requests_from_package_id_fkey(name,price),to_pkg:packages!package_change_requests_to_package_id_fkey(name,price)")
     .order("created_at", { ascending: false }).then(({ data }: any) => setItems(data ?? []));
   useEffect(() => { load(); }, []);
 
   const approve = async (id: string) => {
-    const { error } = await (supabase as any).rpc("approve_package_change", { _request_id: id });
-    if (error) return toast.error(error.message);
+    const result = await approvePackageChangeFn({ data: { requestId: id } });
+    if (!result.ok) return toast.error(result.error);
     toast.success("تمت الموافقة"); load();
   };
   const reject = async (id: string) => {
     const note = prompt("سبب الرفض (اختياري):") ?? "";
-    const { error } = await (supabase as any).rpc("reject_package_change", { _request_id: id, _admin_note: note });
-    if (error) return toast.error(error.message);
+    const result = await rejectPackageChangeFn({ data: { requestId: id, adminNote: note } });
+    if (!result.ok) return toast.error(result.error);
     toast.success("تم الرفض"); load();
   };
 

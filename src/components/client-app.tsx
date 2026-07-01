@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, ShoppingBag, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy } from "lucide-react";
 import { toast } from "sonner";
 import type { Role } from "@/lib/auth";
-import { requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
+import { requestPackageChange, requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
 import { LanguageSwitch } from "@/components/language-switch";
 import { HelpButton } from "@/components/help-button";
 
@@ -177,6 +177,7 @@ function ChangePackageCard({ profile, packages }: any) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [pending, setPending] = useState<any>(null);
+  const requestPackageChangeFn = useServerFn(requestPackageChange);
 
   const load = () => {
     if (!profile?.id) return;
@@ -193,18 +194,9 @@ function ChangePackageCard({ profile, packages }: any) {
   const submit = async () => {
     if (!toId) { toast.error("اختر الباقة الجديدة"); return; }
     setBusy(true);
-    const { error } = await (supabase as any).rpc("request_package_change", {
-      _user_id: profile.id, _to_package_id: toId, _note: note,
-    });
+    const result = await requestPackageChangeFn({ data: { toPackageId: toId, note } });
     setBusy(false);
-    if (error) {
-      const m = error.message || "";
-      if (m.includes("no_active_package")) return toast.error("ليس لديك باقة مفعّلة");
-      if (m.includes("same_package")) return toast.error("هذه باقتك الحالية");
-      if (m.includes("insufficient_balance")) return toast.error("الرصيد غير كافٍ لفرق الباقة");
-      if (m.includes("request_pending")) return toast.error("لديك طلب قيد المراجعة بالفعل");
-      return toast.error("تعذّر إرسال الطلب");
-    }
+    if (!result.ok) { toast.error(result.error); return; }
     toast.success("تم إرسال طلب تغيير الباقة، بانتظار موافقة الأدمن");
     setOpen(false); setNote(""); setToId(null); load();
   };
