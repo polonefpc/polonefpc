@@ -1,8 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
+import { approvePackageChange, rejectPackageChange } from "@/lib/trading.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({ component: Admin });
 
@@ -242,7 +244,7 @@ function Users() {
               <div className="text-xs mt-1">المعرّف/الإحالة: <b className="font-mono tracking-widest">{u.referral_code}</b></div>
               <div className="text-sm mt-1">رصيد: <b>${u.balance}</b> • {u.packages?.name ?? "بدون باقة"} • إحالات: {u.referral_count}</div>
             </div>
-            <span className={`text-xs px-2 py-1 rounded h-fit ${u.is_active?"bg-success/20 text-success":"bg-destructive/20 text-destructive"}`}>{u.is_active?"مفعّل":"محظور"}</span>
+            <span className={`text-xs px-2 py-1 rounded h-fit ${u.is_active?"bg-success/20 text-success":"bg-destructive/20 text-destructive"}`}>{u.is_active?"مفعّل":"غير مفعّل"}</span>
           </div>
           <div className="flex flex-wrap gap-2 mt-3 items-center">
             <input className="bg-input border border-border rounded px-2 py-1 text-sm w-28" placeholder="قيمة النقاط" type="number" value={delta[u.id]??""} onChange={e=>setDelta({...delta,[u.id]:e.target.value})} />
@@ -481,12 +483,16 @@ function Settings() {
     await supabase.from("deposit_wallets").update({ image_url: url }).eq("id", id);
     loadWallets(); toast.success("تم تحديث الصورة");
   };
+  const [yieldBusy, setYieldBusy] = useState(false);
   const runYield = async () => {
+    setYieldBusy(true);
     const res = await fetch("/api/public/cron/daily-yield", {
       method: "POST",
-      headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+      headers: { "Content-Type": "application/json", apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+      body: "{}",
     });
     const j = await res.json().catch(()=>({}));
+    setYieldBusy(false);
     if (res.ok) toast.success(`تم التشغيل • عدد الحسابات المعالجة: ${j.processed ?? 0}`);
     else toast.error("فشل التشغيل: " + (j.error ?? res.status));
   };
@@ -568,7 +574,7 @@ function Settings() {
       <div className="glass rounded-xl p-4">
         <div className="font-bold mb-1">تشغيل الأرباح اليومية يدوياً</div>
         <p className="text-xs text-muted-foreground mb-3">تتم تلقائياً يومياً الساعة 00:14. تُضاف لكل عميل مفعّل قيمة باقته اليومية مرة واحدة في اليوم.</p>
-        <button onClick={runYield} className="btn-primary rounded px-4 py-2 font-bold">تشغيل الآن</button>
+        <button disabled={yieldBusy} onClick={runYield} className="btn-primary rounded px-4 py-2 font-bold disabled:opacity-50">{yieldBusy ? "جاري التشغيل..." : "تشغيل الآن"}</button>
       </div>
 
       <div className="glass rounded-xl p-4">
@@ -659,20 +665,22 @@ function HelpAdmin() {
 
 function PkgChangeAdmin() {
   const [items, setItems] = useState<any[]>([]);
+  const approvePackageChangeFn = useServerFn(approvePackageChange);
+  const rejectPackageChangeFn = useServerFn(rejectPackageChange);
   const load = () => (supabase as any).from("package_change_requests")
     .select("*,profile:profiles!package_change_requests_user_id_fkey(email,full_name,referral_code,balance),from_pkg:packages!package_change_requests_from_package_id_fkey(name,price),to_pkg:packages!package_change_requests_to_package_id_fkey(name,price)")
     .order("created_at", { ascending: false }).then(({ data }: any) => setItems(data ?? []));
   useEffect(() => { load(); }, []);
 
   const approve = async (id: string) => {
-    const { error } = await (supabase as any).rpc("approve_package_change", { _request_id: id });
-    if (error) return toast.error(error.message);
+    const result = await approvePackageChangeFn({ data: { requestId: id } });
+    if (!result.ok) return toast.error(result.error);
     toast.success("تمت الموافقة"); load();
   };
   const reject = async (id: string) => {
     const note = prompt("سبب الرفض (اختياري):") ?? "";
-    const { error } = await (supabase as any).rpc("reject_package_change", { _request_id: id, _admin_note: note });
-    if (error) return toast.error(error.message);
+    const result = await rejectPackageChangeFn({ data: { requestId: id, adminNote: note } });
+    if (!result.ok) return toast.error(result.error);
     toast.success("تم الرفض"); load();
   };
 

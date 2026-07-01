@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { HelpCircle, ChevronDown } from "lucide-react";
+import { HelpCircle, ChevronDown, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 type Section = { id: string; title: string; description: string; video_url: string | null };
@@ -43,25 +43,28 @@ export function HelpButton() {
 
       {open && (
         <div
-          className="fixed inset-0 z-[100] bg-black/70 grid place-items-center p-4"
+          className="fixed inset-0 z-[9999] bg-background/95 backdrop-blur-sm flex items-start justify-center px-3 py-5 sm:items-center"
           onClick={() => setOpen(false)}
         >
           <div
-            className="glass rounded-3xl w-full max-w-lg max-h-[85vh] overflow-y-auto p-5"
+            className="w-full max-w-lg max-h-[calc(100dvh-2.5rem)] overflow-hidden rounded-2xl border border-border bg-popover shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-4">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-popover px-4 py-3">
               <h3 className="text-lg font-extrabold">مركز المساعدة</h3>
-              <button onClick={() => setOpen(false)} className="text-muted-foreground text-sm">إغلاق</button>
+              <button onClick={() => setOpen(false)} className="grid h-8 w-8 place-items-center rounded-full bg-secondary text-muted-foreground" aria-label="إغلاق">
+                <X className="h-4 w-4" />
+              </button>
             </div>
-            {sections.length === 0 && (
-              <div className="text-center text-sm text-muted-foreground py-8">لا توجد أقسام مساعدة بعد</div>
-            )}
-            <div className="space-y-2">
+            <div className="max-h-[calc(100dvh-7rem)] overflow-y-auto p-4">
+              {sections.length === 0 && (
+                <div className="text-center text-sm text-muted-foreground py-8">لا توجد أقسام مساعدة بعد</div>
+              )}
+              <div className="space-y-2">
               {sections.map((s) => {
                 const isOpen = openId === s.id;
                 return (
-                  <div key={s.id} className="bg-secondary/40 rounded-xl overflow-hidden">
+                  <div key={s.id} className="overflow-hidden rounded-xl border border-border bg-secondary/40">
                     <button
                       onClick={() => setOpenId(isOpen ? null : s.id)}
                       className="w-full flex items-center justify-between px-4 py-3 font-bold text-sm text-right"
@@ -93,6 +96,7 @@ export function HelpButton() {
                   </div>
                 );
               })}
+              </div>
             </div>
           </div>
         </div>

@@ -74,13 +74,12 @@ function Landing() {
       <section className="px-6 pb-20 max-w-6xl mx-auto">
         <h2 className="text-3xl font-extrabold text-center mb-3">{t("packages_title", lang)}</h2>
         <p className="text-center text-muted-foreground mb-10 text-sm">{t("packages_sub", lang)}</p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { p: 90, r: "2.3 USDT", n: t("pkg_1", lang) },
-            { p: 130, r: "6.7 USDT", n: t("pkg_2", lang) },
-            { p: 320, r: "15.4 USDT", n: t("pkg_3", lang) },
-            { p: 985, r: "41.2 USDT", n: t("pkg_4", lang) },
-            { p: 1530, r: "67.1 USDT", n: t("pkg_best", lang), best: true },
+            { p: 79, r: "3.2+ USDT", n: t("pkg_1", lang) },
+            { p: 130, r: "7.5+ USDT", n: t("pkg_2", lang) },
+            { p: 339, r: "16.2+ USDT", n: t("pkg_3", lang) },
+            { p: 1355, r: "75.8+ USDT", n: t("pkg_4", lang), best: true },
           ].map((b: any, i) => (
             <div key={i} className={`relative glass rounded-2xl p-6 text-center hover:scale-105 transition ${b.best ? "ring-2 ring-primary" : ""}`}>
               {b.best && <span className="absolute -top-3 left-1/2 -translate-x-1/2 btn-primary px-3 py-1 rounded-full text-[10px] font-black whitespace-nowrap">{t("pkg_best", lang)}</span>}
