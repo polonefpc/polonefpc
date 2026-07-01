@@ -86,7 +86,7 @@ function Signup() {
         )}
 
         <div className="mt-6 text-center text-sm text-muted-foreground">
-          لديك حساب؟ <Link to="/auth/login" className="text-primary font-bold">دخول</Link>
+          <span>لديك حساب؟</span><Link to="/auth/login" className="text-primary font-bold"> دخول</Link>
         </div>
       </div>
     </div>

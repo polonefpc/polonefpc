@@ -83,9 +83,9 @@ export function useProfile() {
     if (!u.user) return;
     const [p, pkg, txs, refs] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", u.user.id).single(),
-      supabase.from("packages").select("*"),
+      supabase.from("packages").select("*").order("id"),
       supabase.from("daily_yields").select("*").eq("user_id", u.user.id).order("applied_on",{ascending:false}).limit(10),
-      supabase.from("profiles").select("id,email,full_name,created_at").eq("referred_by", u.user.id),
+      supabase.from("profiles").select("id,email,full_name,created_at,is_active").eq("referred_by", u.user.id).order("created_at", { ascending: false }),
     ]);
     setData({ profile: p.data, packages: pkg.data ?? [], yields: txs.data ?? [], refs: refs.data ?? [], user: u.user });
     setLoading(false);
@@ -148,7 +148,7 @@ export function HomeTab({ profile, packages, refs, yields }: any) {
           </div>
           <div className="bg-secondary/50 rounded-xl p-3">
             <div className="text-muted-foreground text-[11px]">الإحالات</div>
-            <div className="font-bold mt-0.5 text-sm">{refs.length}</div>
+            <div className="font-bold mt-0.5 text-sm">{Math.max(Number(profile?.referral_count ?? 0), refs.length)}</div>
           </div>
         </div>
       </div>
@@ -212,10 +212,10 @@ function ChangePackageCard({ profile, packages }: any) {
   const hasPending = pending?.status === "pending";
 
   return (
-    <div className="glass rounded-3xl p-5">
+    <div className="rounded-2xl border border-primary/30 bg-surface p-5 shadow-lg">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="font-bold">تغيير الباقة</h3>
+          <h3 className="font-extrabold text-primary">تغيير الباقة</h3>
           <p className="text-xs text-muted-foreground mt-1">انقل اشتراكك لباقة أخرى. يتم خصم فرق السعر فقط.</p>
         </div>
         <button disabled={!profile?.is_active || hasPending} onClick={() => setOpen(true)}
@@ -516,13 +516,16 @@ export function ShopTab({ profile, packages, reload }: any) {
       <div className="glass rounded-3xl p-5">
         <h3 className="font-bold mb-1">باقات التداول (عقود إلكترونية)</h3>
         <p className="text-xs text-muted-foreground mb-3">اشترِ الباقة برصيدك لتفعيل تداولها اليومي.</p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {packages?.map((pkg: any) => {
             const owned = profile?.package_id === pkg.id;
+            const best = Number(pkg.id) === 4 || String(pkg.name ?? "").includes("الأكثر");
             return (
-              <div key={pkg.id} className="bg-secondary/50 rounded-2xl p-4">
+              <div key={pkg.id} className={`relative bg-secondary/50 rounded-2xl p-4 ${best ? "ring-2 ring-primary" : ""}`}>
+                {best && <span className="absolute -top-2 left-3 btn-primary rounded-full px-2 py-0.5 text-[10px] font-black">الأكثر ربحاً</span>}
                 <div className="text-xs text-muted-foreground">{pkg.name}</div>
                 <div className="text-2xl font-black mt-1">${pkg.price}</div>
+                <div className="mt-1 text-xs font-bold text-success">ربح يومي ${Number(pkg.daily_rate).toFixed(1)}+ أو أكثر</div>
                 <button disabled={busy===("pkg-"+pkg.id) || owned || !!profile?.package_id || Number(profile?.balance ?? 0) < Number(pkg.price)}
                   onClick={()=>buyPackage(pkg)}
                   className="btn-primary w-full mt-3 rounded-lg py-1.5 text-xs font-bold disabled:opacity-50">
@@ -581,7 +584,7 @@ export function ReferralTab({ profile, refs }: any) {
             {refs.map((r:any)=>(
               <li key={r.id} className="py-2">
                 <div className="font-medium">{r.full_name ?? r.email}</div>
-                <div className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString("ar")}</div>
+                <div className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString("ar")} • {r.is_active ? "مفعّل" : "غير مفعّل"}</div>
               </li>
             ))}
           </ul>}

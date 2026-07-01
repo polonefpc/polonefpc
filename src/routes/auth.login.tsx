@@ -36,7 +36,7 @@ function Login() {
           <Link to="/auth/forgot" className="text-muted-foreground hover:text-primary">نسيت كلمة المرور؟</Link>
         </div>
         <div className="mt-6 text-center text-sm text-muted-foreground">
-          ليس لديك حساب؟ <Link to="/auth/signup" className="text-primary font-bold">إنشاء حساب</Link>
+          <span>ليس لديك حساب؟</span><Link to="/auth/signup" className="text-primary font-bold"> إنشاء حساب</Link>
         </div>
       </div>
     </div>
