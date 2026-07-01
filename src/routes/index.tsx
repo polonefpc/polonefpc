@@ -77,7 +77,7 @@ function Landing() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { p: 79, r: "3.2+ USDT", n: t("pkg_1", lang) },
-            { p: 150, r: "7.5+ USDT", n: t("pkg_2", lang) },
+            { p: 130, r: "7.5+ USDT", n: t("pkg_2", lang) },
             { p: 339, r: "16.2+ USDT", n: t("pkg_3", lang) },
             { p: 1355, r: "75.8+ USDT", n: t("pkg_4", lang), best: true },
           ].map((b: any, i) => (
