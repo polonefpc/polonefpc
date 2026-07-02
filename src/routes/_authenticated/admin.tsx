@@ -4,15 +4,14 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
-import { approvePackageChange, rejectPackageChange } from "@/lib/trading.functions";
+
 
 export const Route = createFileRoute("/_authenticated/admin")({ component: Admin });
 
-type Tab = "deposits" | "withdrawals" | "orders" | "users" | "products" | "agents" | "contacts" | "settings" | "help" | "pkgchange";
+type Tab = "deposits" | "withdrawals" | "orders" | "users" | "products" | "agents" | "contacts" | "settings" | "help";
 const TABS: { id: Tab; label: string }[] = [
   { id: "deposits", label: "طلبات الإيداع" },
   { id: "withdrawals", label: "طلبات السحب" },
-  { id: "pkgchange", label: "طلبات تغيير الباقة" },
   { id: "orders", label: "طلبات المنتجات" },
   { id: "users", label: "المستخدمون" },
   { id: "products", label: "المنتجات" },
