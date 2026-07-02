@@ -59,7 +59,7 @@ function Admin() {
         {tab === "contacts" && <Contacts />}
         {tab === "agents" && <Agents />}
         {tab === "help" && <HelpAdmin />}
-        {tab === "pkgchange" && <PkgChangeAdmin />}
+        
         {tab === "settings" && <Settings />}
       </div>
     </div>
