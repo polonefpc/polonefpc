@@ -156,7 +156,7 @@ export function HomeTab({ profile, packages, refs, yields }: any) {
         </div>
       </div>
 
-      <ChangePackageCard profile={profile} packages={packages} />
+
 
       <div className="glass rounded-3xl p-5">
         <h3 className="font-bold mb-3">سجل الأرباح اليومية</h3>
