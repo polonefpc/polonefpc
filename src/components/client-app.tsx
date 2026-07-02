@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, ShoppingBag, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy } from "lucide-react";
+import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, ShoppingBag, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import type { Role } from "@/lib/auth";
-import { requestPackageChange, requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
+import { requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
 import { LanguageSwitch } from "@/components/language-switch";
 import { HelpButton } from "@/components/help-button";
 
@@ -119,7 +119,7 @@ export function HomeTab({ profile, packages, refs, yields }: any) {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[11px] text-muted-foreground">المحفظة الرقمية</div>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <div className="text-3xl font-black text-gradient leading-none">
                 {showBal ? `$${Number(profile?.balance ?? 0).toFixed(2)}` : "******"}
               </div>
@@ -131,6 +131,9 @@ export function HomeTab({ profile, packages, refs, yields }: any) {
               >
                 {showBal ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
+              <Link to="/wallet" className="ml-1 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg btn-primary text-[11px] font-bold">
+                <Wallet className="w-3.5 h-3.5" /> فتح المحفظة
+              </Link>
             </div>
           </div>
           <span className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold ${profile?.is_active ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>
