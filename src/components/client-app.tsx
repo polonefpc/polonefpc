@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, ShoppingBag, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy } from "lucide-react";
+import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, ShoppingBag, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import type { Role } from "@/lib/auth";
-import { requestPackageChange, requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
+import { requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
 import { LanguageSwitch } from "@/components/language-switch";
 import { HelpButton } from "@/components/help-button";
 
@@ -119,7 +119,7 @@ export function HomeTab({ profile, packages, refs, yields }: any) {
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-[11px] text-muted-foreground">المحفظة الرقمية</div>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
               <div className="text-3xl font-black text-gradient leading-none">
                 {showBal ? `$${Number(profile?.balance ?? 0).toFixed(2)}` : "******"}
               </div>
@@ -131,6 +131,9 @@ export function HomeTab({ profile, packages, refs, yields }: any) {
               >
                 {showBal ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
+              <Link to="/wallet" className="ml-1 inline-flex items-center gap-1 px-2.5 py-1 rounded-lg btn-primary text-[11px] font-bold">
+                <Wallet className="w-3.5 h-3.5" /> فتح المحفظة
+              </Link>
             </div>
           </div>
           <span className={`shrink-0 px-3 py-1 rounded-full text-xs font-bold ${profile?.is_active ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>
@@ -153,7 +156,7 @@ export function HomeTab({ profile, packages, refs, yields }: any) {
         </div>
       </div>
 
-      <ChangePackageCard profile={profile} packages={packages} />
+
 
       <div className="glass rounded-3xl p-5">
         <h3 className="font-bold mb-3">سجل الأرباح اليومية</h3>
@@ -171,102 +174,6 @@ export function HomeTab({ profile, packages, refs, yields }: any) {
   );
 }
 
-function ChangePackageCard({ profile, packages }: any) {
-  const [open, setOpen] = useState(false);
-  const [toId, setToId] = useState<number | null>(null);
-  const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [pending, setPending] = useState<any>(null);
-  const requestPackageChangeFn = useServerFn(requestPackageChange);
-
-  const load = () => {
-    if (!profile?.id) return;
-    supabase.from("package_change_requests" as any)
-      .select("*,to_package:packages!package_change_requests_to_package_id_fkey(name,price)")
-      .eq("user_id", profile.id).order("created_at", { ascending: false }).limit(1)
-      .then(({ data }) => setPending((data as any)?.[0] ?? null));
-  };
-  useEffect(load, [profile?.id]);
-
-  const cur = packages.find((p: any) => p.id === profile?.package_id);
-  const others = packages.filter((p: any) => p.id !== profile?.package_id);
-
-  const submit = async () => {
-    if (!toId) { toast.error("اختر الباقة الجديدة"); return; }
-    setBusy(true);
-    const result = await requestPackageChangeFn({ data: { toPackageId: toId, note } });
-    setBusy(false);
-    if (!result.ok) { toast.error(result.error); return; }
-    toast.success("تم إرسال طلب تغيير الباقة، بانتظار موافقة الأدمن");
-    setOpen(false); setNote(""); setToId(null); load();
-  };
-
-  const hasPending = pending?.status === "pending";
-
-  return (
-    <div className="rounded-2xl border border-primary/30 bg-surface p-5 shadow-lg">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h3 className="font-extrabold text-primary">تغيير الباقة</h3>
-          <p className="text-xs text-muted-foreground mt-1">انقل اشتراكك لباقة أخرى. يتم خصم فرق السعر فقط.</p>
-        </div>
-        <button disabled={!profile?.is_active || hasPending} onClick={() => setOpen(true)}
-          className="btn-primary px-4 py-2 rounded-xl text-sm font-bold disabled:opacity-50">
-          {hasPending ? "قيد المراجعة" : "تغيير"}
-        </button>
-      </div>
-      {pending && (
-        <div className="mt-3 text-xs flex items-center justify-between bg-secondary/40 rounded-lg px-3 py-2">
-          <span>آخر طلب: {pending.to_package?.name ?? "—"}</span>
-          <span className={`px-2 py-0.5 rounded ${pending.status==="approved"?"bg-success/20 text-success":pending.status==="rejected"?"bg-destructive/20 text-destructive":"bg-muted text-muted-foreground"}`}>
-            {pending.status === "approved" ? "مقبول" : pending.status === "rejected" ? "مرفوض" : "قيد المراجعة"}
-          </span>
-        </div>
-      )}
-
-      {open && (
-        <div className="fixed inset-0 z-[100] bg-black/70 grid place-items-center p-4" onClick={() => setOpen(false)}>
-          <div className="glass rounded-3xl w-full max-w-md max-h-[85vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
-            <h3 className="font-extrabold mb-1">تغيير الباقة</h3>
-            <p className="text-xs text-muted-foreground mb-3">
-              باقتك الحالية: <b>{cur?.name ?? "—"}</b> (${cur?.price ?? 0}) • رصيدك: <b>${Number(profile?.balance ?? 0).toFixed(2)}</b>
-            </p>
-            <div className="space-y-2">
-              {others.map((p: any) => {
-                const diff = Math.max(Number(p.price) - Number(cur?.price ?? 0), 0);
-                const can = Number(profile?.balance ?? 0) >= diff;
-                const sel = toId === p.id;
-                return (
-                  <button key={p.id} disabled={!can} onClick={() => setToId(p.id)}
-                    className={`w-full text-right p-3 rounded-xl border transition disabled:opacity-50 ${sel ? "border-primary bg-primary/10" : "border-border bg-secondary/40"}`}>
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <div className="font-bold text-sm">{p.name}</div>
-                        <div className="text-[11px] text-muted-foreground">${p.price} • يومياً ${p.daily_rate}</div>
-                      </div>
-                      <div className="text-xs">
-                        {diff > 0 ? <span className="text-primary font-bold">+${diff.toFixed(2)}</span> : <span className="text-success">بدون خصم</span>}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            <textarea value={note} onChange={e => setNote(e.target.value)} maxLength={500} rows={3}
-              placeholder="سبب التغيير (يظهر للأدمن)"
-              className="w-full mt-3 bg-input border border-border rounded-xl px-3 py-2 text-sm" />
-            <div className="flex gap-2 mt-3">
-              <button onClick={() => setOpen(false)} className="flex-1 glass rounded-xl py-2.5 text-sm font-bold">إلغاء</button>
-              <button disabled={busy || !toId} onClick={submit} className="flex-1 btn-primary rounded-xl py-2.5 text-sm font-bold disabled:opacity-50">
-                {busy ? "..." : "إرسال الطلب"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 
 

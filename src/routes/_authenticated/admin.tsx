@@ -1,18 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
-import { approvePackageChange, rejectPackageChange } from "@/lib/trading.functions";
+
 
 export const Route = createFileRoute("/_authenticated/admin")({ component: Admin });
 
-type Tab = "deposits" | "withdrawals" | "orders" | "users" | "products" | "agents" | "contacts" | "settings" | "help" | "pkgchange";
+type Tab = "deposits" | "withdrawals" | "orders" | "users" | "products" | "agents" | "contacts" | "settings" | "help";
 const TABS: { id: Tab; label: string }[] = [
   { id: "deposits", label: "طلبات الإيداع" },
   { id: "withdrawals", label: "طلبات السحب" },
-  { id: "pkgchange", label: "طلبات تغيير الباقة" },
   { id: "orders", label: "طلبات المنتجات" },
   { id: "users", label: "المستخدمون" },
   { id: "products", label: "المنتجات" },
@@ -60,7 +59,7 @@ function Admin() {
         {tab === "contacts" && <Contacts />}
         {tab === "agents" && <Agents />}
         {tab === "help" && <HelpAdmin />}
-        {tab === "pkgchange" && <PkgChangeAdmin />}
+        
         {tab === "settings" && <Settings />}
       </div>
     </div>
@@ -663,51 +662,3 @@ function HelpAdmin() {
   );
 }
 
-function PkgChangeAdmin() {
-  const [items, setItems] = useState<any[]>([]);
-  const approvePackageChangeFn = useServerFn(approvePackageChange);
-  const rejectPackageChangeFn = useServerFn(rejectPackageChange);
-  const load = () => (supabase as any).from("package_change_requests")
-    .select("*,profile:profiles!package_change_requests_user_id_fkey(email,full_name,referral_code,balance),from_pkg:packages!package_change_requests_from_package_id_fkey(name,price),to_pkg:packages!package_change_requests_to_package_id_fkey(name,price)")
-    .order("created_at", { ascending: false }).then(({ data }: any) => setItems(data ?? []));
-  useEffect(() => { load(); }, []);
-
-  const approve = async (id: string) => {
-    const result = await approvePackageChangeFn({ data: { requestId: id } });
-    if (!result.ok) return toast.error(result.error);
-    toast.success("تمت الموافقة"); load();
-  };
-  const reject = async (id: string) => {
-    const note = prompt("سبب الرفض (اختياري):") ?? "";
-    const result = await rejectPackageChangeFn({ data: { requestId: id, adminNote: note } });
-    if (!result.ok) return toast.error(result.error);
-    toast.success("تم الرفض"); load();
-  };
-
-  return (
-    <div className="space-y-2">
-      {items.length === 0 && <Empty />}
-      {items.map((r: any) => (
-        <div key={r.id} className="glass rounded-xl p-4">
-          <div className="flex justify-between items-start gap-2">
-            <div>
-              <div className="font-bold">{r.profile?.full_name ?? r.profile?.email}</div>
-              <div className="text-xs text-muted-foreground">{r.profile?.email} • ID: <b className="font-mono">{r.profile?.referral_code}</b> • رصيد: ${Number(r.profile?.balance ?? 0).toFixed(2)}</div>
-              <div className="text-sm mt-1">من <b>{r.from_pkg?.name ?? "—"}</b> (${r.from_pkg?.price ?? 0}) → <b>{r.to_pkg?.name ?? "—"}</b> (${r.to_pkg?.price ?? 0})</div>
-              <div className="text-xs mt-0.5">الفرق المطلوب خصمه: <b className="text-primary">${Number(r.points_required).toFixed(2)}</b></div>
-              {r.note && <div className="text-xs mt-1 bg-secondary/40 rounded p-2 whitespace-pre-wrap">📝 {r.note}</div>}
-              {r.admin_note && <div className="text-xs mt-1 text-destructive">ملاحظة الأدمن: {r.admin_note}</div>}
-            </div>
-            <StatusBadge status={r.status} />
-          </div>
-          {r.status === "pending" && (
-            <div className="flex gap-2 mt-3">
-              <button onClick={() => approve(r.id)} className="bg-success/90 text-success-foreground px-3 py-1.5 rounded-lg text-sm font-bold">قبول وتفعيل</button>
-              <button onClick={() => reject(r.id)} className="bg-destructive/90 text-destructive-foreground px-3 py-1.5 rounded-lg text-sm font-bold">رفض</button>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
