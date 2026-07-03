@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, ShoppingBag, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, Wallet } from "lucide-react";
+import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, ShoppingBag, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, Wallet, AlertTriangle, Info } from "lucide-react";
 import { toast } from "sonner";
 import type { Role } from "@/lib/auth";
 import { requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
@@ -282,9 +282,17 @@ export function WithdrawTab({ profile, reload }: any) {
   const [wallet, setWallet] = useState("");
   const [toCode, setToCode] = useState("");
   const [amt, setAmt] = useState("");
+  const [withdrawDesc, setWithdrawDesc] = useState("");
+  const [showWithdrawDesc, setShowWithdrawDesc] = useState(false);
   const [loading, setLoading] = useState(false);
   const transferPointsFn = useServerFn(transferPoints);
   const active = !!profile?.is_active;
+  const withdrawInfo = withdrawDesc || "السحب يتم فقط إلى محفظة Tron / TRC20. تأكد من كتابة عنوان المحفظة الصحيح قبل إرسال الطلب، والحد الأدنى للسحب 49$.";
+
+  useEffect(() => {
+    supabase.from("settings").select("value").eq("key", "withdraw_description").maybeSingle()
+      .then(({ data }) => setWithdrawDesc(data?.value ?? ""));
+  }, []);
 
   const submitWithdraw = async () => {
     if (!active) { toast.error("حسابك غير مفعّل — لا يمكن السحب"); return; }
@@ -333,8 +341,20 @@ export function WithdrawTab({ profile, reload }: any) {
         <div className="text-3xl font-black text-gradient">${Number(profile?.balance ?? 0).toFixed(2)}</div>
         <div className="mt-4 space-y-3">
           {mode === "withdraw" ? (
-            <input className="w-full bg-input border border-border rounded-xl px-4 py-3" placeholder="عنوان محفظتك"
-              value={wallet} onChange={e=>setWallet(e.target.value)} />
+            <>
+              <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                <span className="font-bold">تنبيه: السحب متاح فقط على محفظة Tron / TRC20.</span>
+              </div>
+              <div className="space-y-2">
+                <button type="button" onClick={() => setShowWithdrawDesc(v => !v)} className="glass px-3 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-2">
+                  <Info className="w-4 h-4 text-primary" /> وصف عملية السحب
+                </button>
+                {showWithdrawDesc && <div className="rounded-xl bg-secondary/40 px-4 py-3 text-xs leading-6 text-muted-foreground whitespace-pre-line">{withdrawInfo}</div>}
+              </div>
+              <input className="w-full bg-input border border-border rounded-xl px-4 py-3" placeholder="عنوان محفظة Tron / TRC20"
+                value={wallet} onChange={e=>setWallet(e.target.value)} />
+            </>
           ) : (
             <input inputMode="numeric" maxLength={5} className="w-full bg-input border border-border rounded-xl px-4 py-3 text-center tracking-widest text-lg font-bold"
               placeholder="رمز المستلم (5 أرقام)" value={toCode} onChange={e=>setToCode(e.target.value.replace(/\D/g,""))} />
@@ -343,7 +363,7 @@ export function WithdrawTab({ profile, reload }: any) {
             placeholder={mode==="withdraw" ? "المبلغ (الحد الأدنى 49$)" : "المبلغ"} value={amt} onChange={e=>setAmt(e.target.value)} />
           <button disabled={loading || !active} onClick={mode==="withdraw"?submitWithdraw:submitTransfer}
             className="btn-primary w-full rounded-xl py-3 font-bold">{loading?"...":mode==="withdraw"?"طلب السحب":"تحويل النقاط"}</button>
-          <p className="text-xs text-muted-foreground">الحد الأدنى للسحب 49$ ولا يوجد حد أعلى. التحويل متاح فقط بين الحسابات المفعّلة.</p>
+          <p className="text-xs text-muted-foreground">الحد الأدنى للسحب 49$ ولا يوجد حد أعلى. السحب فقط على Tron، والتحويل متاح فقط بين الحسابات المفعّلة.</p>
         </div>
       </div>
     </div>

@@ -1,9 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 
 import { useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
+import { runDailyYields } from "@/lib/admin.functions";
 
 
 export const Route = createFileRoute("/_authenticated/admin")({ component: Admin });
@@ -427,17 +429,23 @@ function Agents() {
 
 function Settings() {
   const [desc, setDesc] = useState("");
+  const [withdrawDesc, setWithdrawDesc] = useState("");
   const [wallets, setWallets] = useState<any[]>([]);
   const [wForm, setWForm] = useState({ label:"", address:"", network:"", currency:"", image_url:"" });
   const [wUploading, setWUploading] = useState(false);
   const loadWallets = () => supabase.from("deposit_wallets").select("*").order("sort_order").then(({data})=>setWallets(data ?? []));
   useEffect(()=>{
     supabase.from("settings").select("*").eq("key","deposit_description").maybeSingle().then(({data})=>setDesc(data?.value ?? ""));
+    supabase.from("settings").select("*").eq("key","withdraw_description").maybeSingle().then(({data})=>setWithdrawDesc(data?.value ?? ""));
     loadWallets();
   },[]);
   const saveDesc = async () => {
     await supabase.from("settings").upsert([{ key:"deposit_description", value:desc, updated_at: new Date().toISOString() }]);
     toast.success("تم الحفظ");
+  };
+  const saveWithdrawDesc = async () => {
+    await supabase.from("settings").upsert([{ key:"withdraw_description", value:withdrawDesc, updated_at: new Date().toISOString() }]);
+    toast.success("تم حفظ وصف السحب");
   };
   const compressImg = (file: File) => new Promise<string>((res, rej) => {
     const reader = new FileReader();
@@ -483,17 +491,17 @@ function Settings() {
     loadWallets(); toast.success("تم تحديث الصورة");
   };
   const [yieldBusy, setYieldBusy] = useState(false);
+  const runDailyYieldsFn = useServerFn(runDailyYields);
   const runYield = async () => {
     setYieldBusy(true);
-    const res = await fetch("/api/public/cron/daily-yield", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-      body: "{}",
-    });
-    const j = await res.json().catch(()=>({}));
+    const result = await runDailyYieldsFn();
     setYieldBusy(false);
-    if (res.ok) toast.success(`تم التشغيل • عدد الحسابات المعالجة: ${j.processed ?? 0}`);
-    else toast.error("فشل التشغيل: " + (j.error ?? res.status));
+    if (result.ok) {
+      const processed = result.processed ?? 0;
+      toast.success(processed > 0 ? `تم إرسال الأرباح إلى ${processed} حساب` : "أرباح اليوم مضافة مسبقاً لكل الحسابات المؤهلة");
+    } else {
+      toast.error("فشل التشغيل: " + (result.error ?? "حدث خطأ"));
+    }
   };
   const [gift, setGift] = useState("");
   const [giftBusy, setGiftBusy] = useState(false);
@@ -517,6 +525,13 @@ function Settings() {
         <div className="font-bold">وصف عملية الإيداع</div>
         <textarea rows={3} className="w-full bg-input border border-border rounded px-3 py-2" value={desc} onChange={e=>setDesc(e.target.value)} />
         <button onClick={saveDesc} className="btn-primary rounded px-4 py-2 font-bold">حفظ الوصف</button>
+      </div>
+
+      <div className="glass rounded-xl p-4 space-y-2">
+        <div className="font-bold">وصف عملية السحب</div>
+        <p className="text-xs text-muted-foreground">سيظهر للعميل داخل زر «وصف عملية السحب»، مع تنبيه ثابت أن السحب فقط على Tron.</p>
+        <textarea rows={3} className="w-full bg-input border border-border rounded px-3 py-2" value={withdrawDesc} onChange={e=>setWithdrawDesc(e.target.value)} />
+        <button onClick={saveWithdrawDesc} className="btn-primary rounded px-4 py-2 font-bold">حفظ وصف السحب</button>
       </div>
 
       <div className="glass rounded-xl p-4 space-y-3">
