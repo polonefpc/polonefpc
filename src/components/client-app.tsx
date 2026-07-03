@@ -287,6 +287,7 @@ export function WithdrawTab({ profile, reload }: any) {
   const [loading, setLoading] = useState(false);
   const transferPointsFn = useServerFn(transferPoints);
   const active = !!profile?.is_active;
+  const withdrawInfo = withdrawDesc || "السحب يتم فقط إلى محفظة Tron / TRC20. تأكد من كتابة عنوان المحفظة الصحيح قبل إرسال الطلب، والحد الأدنى للسحب 49$.";
 
   useEffect(() => {
     supabase.from("settings").select("value").eq("key", "withdraw_description").maybeSingle()
@@ -345,14 +346,12 @@ export function WithdrawTab({ profile, reload }: any) {
                 <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
                 <span className="font-bold">تنبيه: السحب متاح فقط على محفظة Tron / TRC20.</span>
               </div>
-              {withdrawDesc && (
-                <div className="space-y-2">
-                  <button type="button" onClick={() => setShowWithdrawDesc(v => !v)} className="glass px-3 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-2">
-                    <Info className="w-4 h-4 text-primary" /> وصف عملية السحب
-                  </button>
-                  {showWithdrawDesc && <div className="rounded-xl bg-secondary/40 px-4 py-3 text-xs leading-6 text-muted-foreground whitespace-pre-line">{withdrawDesc}</div>}
-                </div>
-              )}
+              <div className="space-y-2">
+                <button type="button" onClick={() => setShowWithdrawDesc(v => !v)} className="glass px-3 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-2">
+                  <Info className="w-4 h-4 text-primary" /> وصف عملية السحب
+                </button>
+                {showWithdrawDesc && <div className="rounded-xl bg-secondary/40 px-4 py-3 text-xs leading-6 text-muted-foreground whitespace-pre-line">{withdrawInfo}</div>}
+              </div>
               <input className="w-full bg-input border border-border rounded-xl px-4 py-3" placeholder="عنوان محفظة Tron / TRC20"
                 value={wallet} onChange={e=>setWallet(e.target.value)} />
             </>
