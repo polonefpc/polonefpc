@@ -95,11 +95,46 @@ export function useProfile() {
 }
 
 // ───────── tabs ─────────
-export function HomeTab({ profile, packages, refs, yields }: any) {
+export function HomeTab({ profile, packages, refs, yields, reload }: any) {
   const pkg = packages.find((p: any) => p.id === profile?.package_id);
   const [showBal, setShowBal] = useState(false);
   const code = profile?.referral_code ?? "—";
   const copyCode = () => { if (profile?.referral_code) { navigator.clipboard.writeText(code); toast.success("تم نسخ رمز الإحالة"); } };
+
+  // ─── تحدي الإحالة: ادعُ 10 أشخاص واربح 94 USDT ───
+  const GOAL = 10;
+  const REWARD = 94;
+  const refCount = Math.max(Number(profile?.referral_count ?? 0), refs?.length ?? 0);
+  const progress = Math.min(refCount, GOAL);
+  const pct = Math.round((progress / GOAL) * 100);
+  const [claimed, setClaimed] = useState<boolean | null>(null);
+  const shareUrl = typeof window !== "undefined" && profile?.referral_code
+    ? `${window.location.origin}/auth/signup?ref=${profile.referral_code}` : "";
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    supabase.from("referral_milestone_claims").select("user_id").eq("user_id", profile.id).maybeSingle()
+      .then(({ data }) => {
+        const has = !!data;
+        setClaimed(has);
+        if (!has && refCount >= GOAL) {
+          supabase.rpc("claim_referral_milestone").then(({ data: r }) => {
+            const row: any = Array.isArray(r) ? r[0] : r;
+            if (row?.ok) {
+              toast.success(`مبروك! تم إضافة $${REWARD} إلى رصيدك 🎉`);
+              setClaimed(true);
+              reload?.();
+            }
+          });
+        }
+      });
+  }, [profile?.id, refCount]);
+
+  const copyShare = () => {
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl);
+    toast.success("تم نسخ رابط الإحالة");
+  };
 
   return (
     <div className="space-y-4">
