@@ -446,6 +446,24 @@ export type Database = {
           },
         ]
       }
+      referral_milestone_claims: {
+        Row: {
+          amount: number
+          claimed_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          claimed_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          claimed_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       settings: {
         Row: {
           key: string
@@ -553,6 +571,14 @@ export type Database = {
       approve_package_change: {
         Args: { _request_id: string }
         Returns: undefined
+      }
+      claim_referral_milestone: {
+        Args: never
+        Returns: {
+          amount: number
+          message: string
+          ok: boolean
+        }[]
       }
       gen_referral_code: { Args: never; Returns: string }
       has_role: {
