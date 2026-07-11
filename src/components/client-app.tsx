@@ -192,6 +192,31 @@ export function HomeTab({ profile, packages, refs, yields, reload }: any) {
       </div>
 
 
+      {/* تحدي الإحالة */}
+      <div className="glass rounded-3xl p-5">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <div className="text-xs text-muted-foreground">تحدي الإحالة</div>
+            <h3 className="font-extrabold text-base mt-0.5">ادعُ 10 أشخاص واربح <span className="text-primary">94 USDT</span></h3>
+          </div>
+          <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${claimed ? "bg-success/20 text-success" : "bg-primary/15 text-primary"}`}>
+            {claimed ? "تم الاستلام" : `${progress}/${GOAL}`}
+          </span>
+        </div>
+        <div className="h-2.5 rounded-full bg-secondary/60 overflow-hidden">
+          <div className="h-full btn-primary transition-all duration-500" style={{ width: `${pct}%` }} />
+        </div>
+        <div className="mt-3 flex items-center gap-2">
+          <div className="flex-1 min-w-0 bg-background/40 rounded-lg px-3 py-2 text-[11px] font-mono truncate select-all">
+            {shareUrl || "—"}
+          </div>
+          <button onClick={copyShare} className="btn-primary rounded-lg px-3 py-2 text-xs font-bold inline-flex items-center gap-1">
+            <Copy className="w-3.5 h-3.5" /> نسخ
+          </button>
+        </div>
+        {claimed && <p className="text-[11px] text-success mt-2">تم إضافة المكافأة إلى رصيدك.</p>}
+        {!claimed && refCount >= GOAL && <p className="text-[11px] text-primary mt-2">جارٍ إضافة المكافأة…</p>}
+      </div>
 
       <div className="glass rounded-3xl p-5">
         <h3 className="font-bold mb-3">سجل الأرباح اليومية</h3>
