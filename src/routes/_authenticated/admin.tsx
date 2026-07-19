@@ -105,10 +105,11 @@ function Deposits() {
             <div>
               <div className="font-bold">{r.profiles?.full_name ?? r.profiles?.email}</div>
               <div className="text-xs text-muted-foreground">{r.profiles?.email} • ID: <b className="font-mono">{r.profiles?.referral_code}</b></div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">🕒 {new Date(r.created_at).toLocaleString("ar-EG", { year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12: false })}</div>
               {r.package_id
                 ? <div className="text-sm mt-1">🎁 شراء باقة: {r.packages?.name} • ${r.packages?.price} • يومياً ${r.packages?.daily_rate}</div>
                 : <div className="text-sm mt-1">💰 إيداع رصيد: <b>${Number(r.amount).toFixed(2)}</b></div>}
-              {r.tx_hash && <div className="text-xs font-mono mt-1 break-all opacity-70">{r.tx_hash}</div>}
+              {r.tx_hash && <div className="text-xs font-mono mt-1 break-all opacity-70">TX: {r.tx_hash}</div>}
             </div>
             <StatusBadge status={r.status} />
           </div>
