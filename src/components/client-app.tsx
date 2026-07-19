@@ -259,9 +259,10 @@ export function DepositTab({ reload }: any) {
   const submit = async () => {
     const a = Number(amount);
     if (!a || a <= 0) { toast.error("أدخل قيمة الإيداع"); return; }
+    if (!tx || tx.trim().length < 6) { toast.error("أدخل رقم عملية التحويل (TX Hash) لإرسال الطلب"); return; }
     setLoading(true);
     const { data: u } = await supabase.auth.getUser();
-    const { error } = await supabase.from("deposit_requests").insert({ user_id: u.user!.id, amount: a, tx_hash: tx, package_id: null as any });
+    const { error } = await supabase.from("deposit_requests").insert({ user_id: u.user!.id, amount: a, tx_hash: tx.trim(), package_id: null as any });
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     toast.success("تم إرسال طلب الإيداع. بانتظار موافقة الأدمن.");
