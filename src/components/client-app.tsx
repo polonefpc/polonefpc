@@ -17,7 +17,7 @@ const TABS: { id: Tab; label: string; icon: typeof Home }[] = [
   { id: "deposit", label: "إيداع", icon: ArrowDownToLine },
   { id: "withdraw", label: "السحب", icon: ArrowUpFromLine },
   { id: "local", label: "إيداع محلي", icon: MapPin },
-  { id: "shop", label: "السلة", icon: ShoppingBag },
+  { id: "shop", label: "الباقات", icon: Package },
   { id: "referral", label: "إحالة", icon: Share2 },
 ];
 
@@ -335,7 +335,7 @@ export function DepositTab({ reload }: any) {
         <button disabled={loading} onClick={submit} className="btn-primary w-full rounded-xl py-3 font-bold">
           {loading ? "..." : "إرسال طلب الإيداع"}
         </button>
-        <p className="text-[11px] text-muted-foreground">لشراء باقة تداول: ادفع رصيدك من تبويب «السلة».</p>
+        <p className="text-[11px] text-muted-foreground">لشراء باقة تداول: ادفع رصيدك من تبويب «الباقات».</p>
       </div>
 
       {mine.length > 0 && (
@@ -409,7 +409,7 @@ export function WithdrawTab({ profile, reload }: any) {
     <div className="space-y-4">
       {!active && (
         <div className="glass rounded-2xl p-4 border border-destructive/40 text-sm text-destructive">
-          حسابك غير مفعّل. لا يمكنك السحب أو التحويل قبل تفعيل باقة من «السلة».
+          حسابك غير مفعّل. لا يمكنك السحب أو التحويل قبل تفعيل باقة من «الباقات».
         </div>
       )}
       <div className="glass rounded-2xl p-2 flex">
@@ -510,7 +510,7 @@ export function ShopTab({ profile, packages, reload }: any) {
           <div className="text-xs text-muted-foreground">رصيدك</div>
           <div className="text-2xl font-black text-gradient">${Number(profile?.balance??0).toFixed(2)}</div>
         </div>
-        <ShoppingBag className="w-8 h-8 text-primary" />
+        <Package className="w-8 h-8 text-primary" />
       </div>
 
       <div className="glass rounded-3xl p-5">
