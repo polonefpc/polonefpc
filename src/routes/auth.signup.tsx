@@ -62,7 +62,9 @@ function Signup() {
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     toast.success("تم تفعيل حسابك");
+    if (dest) { window.location.href = dest; return; }
     nav({ to: "/dashboard" });
+
   };
 
   return (
