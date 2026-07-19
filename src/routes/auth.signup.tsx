@@ -27,7 +27,9 @@ const schema = z.object({
 
 function Signup() {
   const nav = useNavigate();
-  const { ref } = useSearch({ from: "/auth/signup" });
+  const { ref, next } = useSearch({ from: "/auth/signup" });
+  const dest = safeNext(next);
+
   const [step, setStep] = useState<"form" | "otp">("form");
   const [form, setForm] = useState({ full_name: "", email: "", password: "", ref_code: ref || "" });
   const [otp, setOtp] = useState("");
