@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, ShoppingBag, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, Wallet, AlertTriangle, Info } from "lucide-react";
+import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, Package, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, Wallet, AlertTriangle, Info } from "lucide-react";
 import { toast } from "sonner";
 import type { Role } from "@/lib/auth";
 import { requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
 import { LanguageSwitch } from "@/components/language-switch";
 import { HelpButton } from "@/components/help-button";
+import { SupportButton } from "@/components/support-button";
 
 type Tab = "home" | "deposit" | "withdraw" | "local" | "shop" | "referral";
 
