@@ -332,7 +332,7 @@ export function DepositTab({ reload }: any) {
         <input type="number" step="0.01" min={1} className="w-full bg-input border border-border rounded-xl px-4 py-3"
           placeholder="المبلغ بالـ USDT" value={amount} onChange={e => setAmount(e.target.value)} />
         <input className="w-full bg-input border border-border rounded-xl px-4 py-3"
-          placeholder="رقم عملية التحويل / TX Hash (اختياري)" value={tx} onChange={e => setTx(e.target.value)} />
+          placeholder="رقم عملية التحويل / TX Hash (مطلوب)" value={tx} onChange={e => setTx(e.target.value)} />
         <button disabled={loading} onClick={submit} className="btn-primary w-full rounded-xl py-3 font-bold">
           {loading ? "..." : "إرسال طلب الإيداع"}
         </button>
