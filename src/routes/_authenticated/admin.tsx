@@ -105,10 +105,11 @@ function Deposits() {
             <div>
               <div className="font-bold">{r.profiles?.full_name ?? r.profiles?.email}</div>
               <div className="text-xs text-muted-foreground">{r.profiles?.email} • ID: <b className="font-mono">{r.profiles?.referral_code}</b></div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">🕒 {new Date(r.created_at).toLocaleString("ar-EG", { year:"numeric", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit", second:"2-digit", hour12: false })}</div>
               {r.package_id
                 ? <div className="text-sm mt-1">🎁 شراء باقة: {r.packages?.name} • ${r.packages?.price} • يومياً ${r.packages?.daily_rate}</div>
                 : <div className="text-sm mt-1">💰 إيداع رصيد: <b>${Number(r.amount).toFixed(2)}</b></div>}
-              {r.tx_hash && <div className="text-xs font-mono mt-1 break-all opacity-70">{r.tx_hash}</div>}
+              {r.tx_hash && <div className="text-xs font-mono mt-1 break-all opacity-70">TX: {r.tx_hash}</div>}
             </div>
             <StatusBadge status={r.status} />
           </div>
@@ -430,6 +431,8 @@ function Agents() {
 function Settings() {
   const [desc, setDesc] = useState("");
   const [withdrawDesc, setWithdrawDesc] = useState("");
+  const [supportUrl, setSupportUrl] = useState("");
+  const [supportEnabled, setSupportEnabled] = useState(false);
   const [wallets, setWallets] = useState<any[]>([]);
   const [wForm, setWForm] = useState({ label:"", address:"", network:"", currency:"", image_url:"" });
   const [wUploading, setWUploading] = useState(false);
@@ -437,6 +440,8 @@ function Settings() {
   useEffect(()=>{
     supabase.from("settings").select("*").eq("key","deposit_description").maybeSingle().then(({data})=>setDesc(data?.value ?? ""));
     supabase.from("settings").select("*").eq("key","withdraw_description").maybeSingle().then(({data})=>setWithdrawDesc(data?.value ?? ""));
+    supabase.from("settings").select("*").eq("key","support_url").maybeSingle().then(({data})=>setSupportUrl(data?.value ?? ""));
+    supabase.from("settings").select("*").eq("key","support_enabled").maybeSingle().then(({data})=>setSupportEnabled((data?.value ?? "false") === "true"));
     loadWallets();
   },[]);
   const saveDesc = async () => {
@@ -446,6 +451,13 @@ function Settings() {
   const saveWithdrawDesc = async () => {
     await supabase.from("settings").upsert([{ key:"withdraw_description", value:withdrawDesc, updated_at: new Date().toISOString() }]);
     toast.success("تم حفظ وصف السحب");
+  };
+  const saveSupport = async () => {
+    await supabase.from("settings").upsert([
+      { key:"support_url", value: supportUrl.trim(), updated_at: new Date().toISOString() },
+      { key:"support_enabled", value: supportEnabled ? "true" : "false", updated_at: new Date().toISOString() },
+    ]);
+    toast.success("تم حفظ إعدادات الدعم");
   };
   const compressImg = (file: File) => new Promise<string>((res, rej) => {
     const reader = new FileReader();
@@ -532,6 +544,17 @@ function Settings() {
         <p className="text-xs text-muted-foreground">سيظهر للعميل داخل زر «وصف عملية السحب»، مع تنبيه ثابت أن السحب فقط على Tron.</p>
         <textarea rows={3} className="w-full bg-input border border-border rounded px-3 py-2" value={withdrawDesc} onChange={e=>setWithdrawDesc(e.target.value)} />
         <button onClick={saveWithdrawDesc} className="btn-primary rounded px-4 py-2 font-bold">حفظ وصف السحب</button>
+      </div>
+
+      <div className="glass rounded-xl p-4 space-y-2">
+        <div className="font-bold">زر الدعم (المحادثة)</div>
+        <p className="text-xs text-muted-foreground">رابط محادثة الدعم (واتساب، تلغرام، أي رابط). يمكن للعميل تحريك الزر في الشاشة والضغط عليه للانتقال إلى المحادثة.</p>
+        <input dir="ltr" className="w-full bg-input border border-border rounded px-3 py-2 text-sm" placeholder="https://wa.me/..." value={supportUrl} onChange={e=>setSupportUrl(e.target.value)} />
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={supportEnabled} onChange={e=>setSupportEnabled(e.target.checked)} />
+          <span>عرض زر الدعم للعملاء</span>
+        </label>
+        <button onClick={saveSupport} className="btn-primary rounded px-4 py-2 font-bold">حفظ إعدادات الدعم</button>
       </div>
 
       <div className="glass rounded-xl p-4 space-y-3">

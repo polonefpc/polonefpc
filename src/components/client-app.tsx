@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, ShoppingBag, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, Wallet, AlertTriangle, Info } from "lucide-react";
+import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, Package, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, Wallet, AlertTriangle, Info } from "lucide-react";
 import { toast } from "sonner";
 import type { Role } from "@/lib/auth";
 import { requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
 import { LanguageSwitch } from "@/components/language-switch";
 import { HelpButton } from "@/components/help-button";
+import { SupportButton } from "@/components/support-button";
 
 type Tab = "home" | "deposit" | "withdraw" | "local" | "shop" | "referral";
 
@@ -16,7 +17,7 @@ const TABS: { id: Tab; label: string; icon: typeof Home }[] = [
   { id: "deposit", label: "إيداع", icon: ArrowDownToLine },
   { id: "withdraw", label: "السحب", icon: ArrowUpFromLine },
   { id: "local", label: "إيداع محلي", icon: MapPin },
-  { id: "shop", label: "السلة", icon: ShoppingBag },
+  { id: "shop", label: "الباقات", icon: Package },
   { id: "referral", label: "إحالة", icon: Share2 },
 ];
 
@@ -31,6 +32,7 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
 
   return (
     <div className="min-h-screen pb-24">
+      <SupportButton />
       <header className="sticky top-0 z-20 px-4 py-3 glass border-b border-border flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 shrink-0">
           <div className="w-8 h-8 rounded-lg btn-primary grid place-items-center font-black text-sm">P</div>
@@ -258,9 +260,10 @@ export function DepositTab({ reload }: any) {
   const submit = async () => {
     const a = Number(amount);
     if (!a || a <= 0) { toast.error("أدخل قيمة الإيداع"); return; }
+    if (!tx || tx.trim().length < 6) { toast.error("أدخل رقم عملية التحويل (TX Hash) لإرسال الطلب"); return; }
     setLoading(true);
     const { data: u } = await supabase.auth.getUser();
-    const { error } = await supabase.from("deposit_requests").insert({ user_id: u.user!.id, amount: a, tx_hash: tx, package_id: null as any });
+    const { error } = await supabase.from("deposit_requests").insert({ user_id: u.user!.id, amount: a, tx_hash: tx.trim(), package_id: null as any });
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     toast.success("تم إرسال طلب الإيداع. بانتظار موافقة الأدمن.");
@@ -330,11 +333,11 @@ export function DepositTab({ reload }: any) {
         <input type="number" step="0.01" min={1} className="w-full bg-input border border-border rounded-xl px-4 py-3"
           placeholder="المبلغ بالـ USDT" value={amount} onChange={e => setAmount(e.target.value)} />
         <input className="w-full bg-input border border-border rounded-xl px-4 py-3"
-          placeholder="رقم عملية التحويل / TX Hash (اختياري)" value={tx} onChange={e => setTx(e.target.value)} />
+          placeholder="رقم عملية التحويل / TX Hash (مطلوب)" value={tx} onChange={e => setTx(e.target.value)} />
         <button disabled={loading} onClick={submit} className="btn-primary w-full rounded-xl py-3 font-bold">
           {loading ? "..." : "إرسال طلب الإيداع"}
         </button>
-        <p className="text-[11px] text-muted-foreground">لشراء باقة تداول: ادفع رصيدك من تبويب «السلة».</p>
+        <p className="text-[11px] text-muted-foreground">لشراء باقة تداول: ادفع رصيدك من تبويب «الباقات».</p>
       </div>
 
       {mine.length > 0 && (
@@ -408,7 +411,7 @@ export function WithdrawTab({ profile, reload }: any) {
     <div className="space-y-4">
       {!active && (
         <div className="glass rounded-2xl p-4 border border-destructive/40 text-sm text-destructive">
-          حسابك غير مفعّل. لا يمكنك السحب أو التحويل قبل تفعيل باقة من «السلة».
+          حسابك غير مفعّل. لا يمكنك السحب أو التحويل قبل تفعيل باقة من «الباقات».
         </div>
       )}
       <div className="glass rounded-2xl p-2 flex">
@@ -509,7 +512,7 @@ export function ShopTab({ profile, packages, reload }: any) {
           <div className="text-xs text-muted-foreground">رصيدك</div>
           <div className="text-2xl font-black text-gradient">${Number(profile?.balance??0).toFixed(2)}</div>
         </div>
-        <ShoppingBag className="w-8 h-8 text-primary" />
+        <Package className="w-8 h-8 text-primary" />
       </div>
 
       <div className="glass rounded-3xl p-5">
