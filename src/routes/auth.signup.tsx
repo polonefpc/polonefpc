@@ -5,9 +5,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
 export const Route = createFileRoute("/auth/signup")({
-  validateSearch: (s: Record<string, unknown>) => ({ ref: (s.ref as string) || "" }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    ref: (s.ref as string) || "",
+    next: typeof s.next === "string" ? s.next : "",
+  }),
   component: Signup,
 });
+
+function safeNext(n: string): string | null {
+  if (!n || !n.startsWith("/") || n.startsWith("//")) return null;
+  return n;
+}
+
 
 const schema = z.object({
   full_name: z.string().trim().min(2).max(80),
@@ -18,7 +27,9 @@ const schema = z.object({
 
 function Signup() {
   const nav = useNavigate();
-  const { ref } = useSearch({ from: "/auth/signup" });
+  const { ref, next } = useSearch({ from: "/auth/signup" });
+  const dest = safeNext(next);
+
   const [step, setStep] = useState<"form" | "otp">("form");
   const [form, setForm] = useState({ full_name: "", email: "", password: "", ref_code: ref || "" });
   const [otp, setOtp] = useState("");
@@ -33,7 +44,7 @@ function Signup() {
       email: form.email,
       password: form.password,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`,
+        emailRedirectTo: `${window.location.origin}${dest ?? "/dashboard"}`,
         data: { full_name: form.full_name, ref_code: form.ref_code || undefined },
       },
     });
@@ -51,7 +62,9 @@ function Signup() {
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     toast.success("تم تفعيل حسابك");
+    if (dest) { window.location.href = dest; return; }
     nav({ to: "/dashboard" });
+
   };
 
   return (

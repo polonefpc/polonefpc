@@ -3,10 +3,21 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/auth/login")({ component: Login });
+export const Route = createFileRoute("/auth/login")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" ? s.next : "",
+  }),
+  component: Login,
+});
+
+function safeNext(next: string): string | null {
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return null;
+  return next;
+}
 
 function Login() {
   const nav = useNavigate();
+  const { next } = Route.useSearch();
   const [form, setForm] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
 
@@ -17,6 +28,8 @@ function Login() {
     setLoading(false);
     if (error) { toast.error(error.message); return; }
     toast.success("مرحباً بعودتك");
+    const dest = safeNext(next);
+    if (dest) { window.location.href = dest; return; }
     nav({ to: "/dashboard" });
   };
 
@@ -36,7 +49,12 @@ function Login() {
           <Link to="/auth/forgot" className="text-muted-foreground hover:text-primary">نسيت كلمة المرور؟</Link>
         </div>
         <div className="mt-6 text-center text-sm text-muted-foreground">
-          <span>ليس لديك حساب؟</span><Link to="/auth/signup" className="text-primary font-bold"> إنشاء حساب</Link>
+          <span>ليس لديك حساب؟</span>
+          <Link
+            to="/auth/signup"
+            search={safeNext(next) ? { next: safeNext(next)! } : undefined}
+            className="text-primary font-bold"
+          > إنشاء حساب</Link>
         </div>
       </div>
     </div>
