@@ -546,6 +546,17 @@ function Settings() {
         <button onClick={saveWithdrawDesc} className="btn-primary rounded px-4 py-2 font-bold">حفظ وصف السحب</button>
       </div>
 
+      <div className="glass rounded-xl p-4 space-y-2">
+        <div className="font-bold">زر الدعم (المحادثة)</div>
+        <p className="text-xs text-muted-foreground">رابط محادثة الدعم (واتساب، تلغرام، أي رابط). يمكن للعميل تحريك الزر في الشاشة والضغط عليه للانتقال إلى المحادثة.</p>
+        <input dir="ltr" className="w-full bg-input border border-border rounded px-3 py-2 text-sm" placeholder="https://wa.me/..." value={supportUrl} onChange={e=>setSupportUrl(e.target.value)} />
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={supportEnabled} onChange={e=>setSupportEnabled(e.target.checked)} />
+          <span>عرض زر الدعم للعملاء</span>
+        </label>
+        <button onClick={saveSupport} className="btn-primary rounded px-4 py-2 font-bold">حفظ إعدادات الدعم</button>
+      </div>
+
       <div className="glass rounded-xl p-4 space-y-3">
         <div className="font-bold">محافظ الإيداع</div>
         <ul className="space-y-2">
