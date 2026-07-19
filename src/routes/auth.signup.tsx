@@ -5,9 +5,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
 export const Route = createFileRoute("/auth/signup")({
-  validateSearch: (s: Record<string, unknown>) => ({ ref: (s.ref as string) || "" }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    ref: (s.ref as string) || "",
+    next: typeof s.next === "string" ? s.next : "",
+  }),
   component: Signup,
 });
+
+function safeNext(n: string): string | null {
+  if (!n || !n.startsWith("/") || n.startsWith("//")) return null;
+  return n;
+}
+
 
 const schema = z.object({
   full_name: z.string().trim().min(2).max(80),
