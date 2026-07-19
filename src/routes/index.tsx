@@ -23,7 +23,7 @@ export const Route = createFileRoute("/")({
 function Landing() {
   const lang = useLang();
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" translate="no" suppressHydrationWarning>
       <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2">
         <HelpButton />
         <LanguageSwitch />
@@ -31,8 +31,8 @@ function Landing() {
 
       <header className="flex items-center justify-between px-6 py-5 max-w-6xl mx-auto pt-14">
         <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl btn-primary grid place-items-center font-black">P</div>
-          <span className="text-xl font-extrabold tracking-tight">polone</span>
+          <div className="w-9 h-9 rounded-xl btn-primary grid place-items-center font-black" translate="no">P</div>
+          <span className="text-xl font-extrabold tracking-tight" translate="no" suppressHydrationWarning>polone</span>
         </div>
         <nav className="flex gap-3 text-sm">
           <Link to="/auth/login" className="px-4 py-2 rounded-lg hover:bg-secondary transition">{t("nav_login", lang)}</Link>
@@ -43,7 +43,7 @@ function Landing() {
       <section className="relative px-6 pt-10 pb-24 max-w-6xl mx-auto text-center">
         <span className="inline-block glass px-4 py-1.5 rounded-full text-xs text-primary mb-6">{t("hero_badge", lang)}</span>
         <h1 className="text-5xl md:text-7xl font-black leading-tight">
-          polone<br/>
+          <span translate="no" suppressHydrationWarning>polone</span><br/>
           <span className="text-gradient">{t("hero_title_2", lang)}</span>
         </h1>
         <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">{t("hero_desc", lang)}</p>
