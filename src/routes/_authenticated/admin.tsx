@@ -431,6 +431,8 @@ function Agents() {
 function Settings() {
   const [desc, setDesc] = useState("");
   const [withdrawDesc, setWithdrawDesc] = useState("");
+  const [supportUrl, setSupportUrl] = useState("");
+  const [supportEnabled, setSupportEnabled] = useState(false);
   const [wallets, setWallets] = useState<any[]>([]);
   const [wForm, setWForm] = useState({ label:"", address:"", network:"", currency:"", image_url:"" });
   const [wUploading, setWUploading] = useState(false);
@@ -438,6 +440,8 @@ function Settings() {
   useEffect(()=>{
     supabase.from("settings").select("*").eq("key","deposit_description").maybeSingle().then(({data})=>setDesc(data?.value ?? ""));
     supabase.from("settings").select("*").eq("key","withdraw_description").maybeSingle().then(({data})=>setWithdrawDesc(data?.value ?? ""));
+    supabase.from("settings").select("*").eq("key","support_url").maybeSingle().then(({data})=>setSupportUrl(data?.value ?? ""));
+    supabase.from("settings").select("*").eq("key","support_enabled").maybeSingle().then(({data})=>setSupportEnabled((data?.value ?? "false") === "true"));
     loadWallets();
   },[]);
   const saveDesc = async () => {
@@ -447,6 +451,13 @@ function Settings() {
   const saveWithdrawDesc = async () => {
     await supabase.from("settings").upsert([{ key:"withdraw_description", value:withdrawDesc, updated_at: new Date().toISOString() }]);
     toast.success("تم حفظ وصف السحب");
+  };
+  const saveSupport = async () => {
+    await supabase.from("settings").upsert([
+      { key:"support_url", value: supportUrl.trim(), updated_at: new Date().toISOString() },
+      { key:"support_enabled", value: supportEnabled ? "true" : "false", updated_at: new Date().toISOString() },
+    ]);
+    toast.success("تم حفظ إعدادات الدعم");
   };
   const compressImg = (file: File) => new Promise<string>((res, rej) => {
     const reader = new FileReader();
