@@ -32,6 +32,7 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
 
   return (
     <div className="min-h-screen pb-24">
+      <SupportButton />
       <header className="sticky top-0 z-20 px-4 py-3 glass border-b border-border flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 shrink-0">
           <div className="w-8 h-8 rounded-lg btn-primary grid place-items-center font-black text-sm">P</div>
