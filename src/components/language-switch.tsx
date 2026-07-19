@@ -27,7 +27,8 @@ export function useLang(): Lang {
 
 export function LanguageSwitch({ className = "" }: { className?: string }) {
   const [current, setCurrent] = useState<Lang>("ar");
-  useEffect(() => { setCurrent(getLang()); }, []);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setCurrent(getLang()); setMounted(true); }, []);
 
   const pick = (l: Lang) => {
     localStorage.setItem("polone_lang", l);
@@ -37,12 +38,26 @@ export function LanguageSwitch({ className = "" }: { className?: string }) {
     window.location.reload();
   };
 
+  if (!mounted) {
+    return (
+      <div
+        className={`inline-flex gap-1 rounded-full border border-white/10 bg-white/5 backdrop-blur-md p-1 ${className}`}
+        suppressHydrationWarning
+      />
+    );
+  }
+
   return (
-    <div className={`inline-flex gap-1 rounded-full border border-white/10 bg-white/5 backdrop-blur-md p-1 ${className}`}>
+    <div
+      className={`inline-flex gap-1 rounded-full border border-white/10 bg-white/5 backdrop-blur-md p-1 ${className}`}
+      translate="no"
+      suppressHydrationWarning
+    >
       {LANGS.map(l => (
         <button
           key={l.code}
           onClick={() => pick(l.code)}
+          translate="no"
           className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition ${
             current === l.code ? "bg-white/15 text-foreground" : "text-muted-foreground hover:text-foreground"
           }`}
@@ -53,6 +68,7 @@ export function LanguageSwitch({ className = "" }: { className?: string }) {
     </div>
   );
 }
+
 
 export const T: Record<string, Record<Lang, string>> = {
   nav_login: { ar: "دخول", en: "Login", fr: "Connexion", tr: "Giriş" },
