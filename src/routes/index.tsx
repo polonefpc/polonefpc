@@ -1,5 +1,6 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { ShieldCheck, TrendingUp, Users, Wallet, ArrowLeft } from "lucide-react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { LanguageSwitch, useLang, t } from "@/components/language-switch";
 import { HelpButton } from "@/components/help-button";
@@ -15,6 +16,10 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "Polone — عقود إلكترونية مربحة" },
       { name: "description", content: "polone منصة عالمية معتمدة من أكثر الشركات العالمية للربح الثابت، إيداع وسحب فوري ودعم كل المحافظ الإلكترونية." },
+      { property: "og:title", content: "Polone — عقود إلكترونية مربحة" },
+      { property: "og:description", content: "منصة عالمية للباقات والعقود الإلكترونية مع إدارة آمنة للرصيد." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Landing,
@@ -22,6 +27,19 @@ export const Route = createFileRoute("/")({
 
 function Landing() {
   const lang = useLang();
+  const [packages, setPackages] = useState<any[]>([]);
+
+  useEffect(() => {
+    supabase.from("packages").select("*").order("price").then(({ data }) => setPackages(data ?? []));
+  }, []);
+
+  const packageCards = packages.length > 0 ? packages : [
+    { id: 1, price: 79, daily_rate: 3.2, name: t("pkg_1", lang) },
+    { id: 2, price: 130, daily_rate: 7.5, name: t("pkg_2", lang) },
+    { id: 3, price: 339, daily_rate: 16.2, name: t("pkg_3", lang) },
+    { id: 4, price: 1355, daily_rate: 75.8, name: t("pkg_4", lang) },
+  ];
+  const highestRate = Math.max(...packageCards.map(pkg => Number(pkg.daily_rate)));
   return (
     <div className="min-h-screen" translate="no" suppressHydrationWarning>
       <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2">
@@ -75,19 +93,17 @@ function Landing() {
         <h2 className="text-3xl font-extrabold text-center mb-3">{t("packages_title", lang)}</h2>
         <p className="text-center text-muted-foreground mb-10 text-sm">{t("packages_sub", lang)}</p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { p: 79, r: "3.2+ USDT", n: t("pkg_1", lang) },
-            { p: 130, r: "7.5+ USDT", n: t("pkg_2", lang) },
-            { p: 339, r: "16.2+ USDT", n: t("pkg_3", lang) },
-            { p: 1355, r: "75.8+ USDT", n: t("pkg_4", lang), best: true },
-          ].map((b: any, i) => (
-            <div key={i} className={`relative glass rounded-2xl p-6 text-center hover:scale-105 transition ${b.best ? "ring-2 ring-primary" : ""}`}>
-              {b.best && <span className="absolute -top-3 left-1/2 -translate-x-1/2 btn-primary px-3 py-1 rounded-full text-[10px] font-black whitespace-nowrap">{t("pkg_best", lang)}</span>}
-              <div className="text-sm text-muted-foreground">{b.n}</div>
-              <div className="text-4xl font-black mt-2">${b.p}</div>
-              <div className="mt-3 text-gradient text-xl font-bold">{b.r} {t("pkg_daily", lang)}</div>
+          {packageCards.map((pkg: any) => {
+            const best = Number(pkg.daily_rate) === highestRate;
+            return (
+            <div key={pkg.id} className={`relative glass rounded-2xl p-6 text-center hover:scale-105 transition ${best ? "ring-2 ring-primary" : ""}`}>
+              {best && <span className="absolute -top-3 left-1/2 -translate-x-1/2 btn-primary px-3 py-1 rounded-full text-[10px] font-black whitespace-nowrap">{t("pkg_best", lang)}</span>}
+              <div className="text-sm text-muted-foreground">{pkg.name}</div>
+              {pkg.package_type && <div className="text-xs text-muted-foreground mt-1">{pkg.package_type}</div>}
+              <div className="text-4xl font-black mt-2">${Number(pkg.price).toFixed(2)}</div>
+              <div className="mt-3 text-gradient text-xl font-bold">{Number(pkg.daily_rate).toFixed(2)}+ USDT {t("pkg_daily", lang)}</div>
             </div>
-          ))}
+          )})}
         </div>
       </section>
 
