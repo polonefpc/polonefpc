@@ -9,7 +9,7 @@ export const Route = createFileRoute("/api/public/cron/daily-yield")({
           return Response.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const today = new Date().toISOString().slice(0, 10);
+        const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Baghdad" }).format(new Date());
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data: processed, error } = await (supabaseAdmin as any).rpc("apply_daily_yields", { _apply_date: today });
         if (error) return Response.json({ error: error.message }, { status: 500 });

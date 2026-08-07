@@ -292,18 +292,21 @@ export type Database = {
           daily_rate: number
           id: number
           name: string
+          package_type: string
           price: number
         }
         Insert: {
           daily_rate: number
-          id: number
+          id?: number
           name: string
+          package_type?: string
           price: number
         }
         Update: {
           daily_rate?: number
           id?: number
           name?: string
+          package_type?: string
           price?: number
         }
         Relationships: []

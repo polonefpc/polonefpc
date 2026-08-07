@@ -521,11 +521,13 @@ export function ShopTab({ profile, packages, reload }: any) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {packages?.map((pkg: any) => {
             const owned = profile?.package_id === pkg.id;
-            const best = Number(pkg.id) === 4 || String(pkg.name ?? "").includes("الأكثر");
+            const highestRate = Math.max(...(packages ?? []).map((item: any) => Number(item.daily_rate ?? 0)));
+            const best = Number(pkg.daily_rate) === highestRate;
             return (
               <div key={pkg.id} className={`relative bg-secondary/50 rounded-2xl p-4 ${best ? "ring-2 ring-primary" : ""}`}>
                 {best && <span className="absolute -top-2 left-3 btn-primary rounded-full px-2 py-0.5 text-[10px] font-black">الأكثر ربحاً</span>}
                 <div className="text-xs text-muted-foreground">{pkg.name}</div>
+                {pkg.package_type && <div className="text-[11px] text-muted-foreground mt-1">{pkg.package_type}</div>}
                 <div className="text-2xl font-black mt-1">${pkg.price}</div>
                 <div className="mt-1 text-xs font-bold text-success">ربح يومي ${Number(pkg.daily_rate).toFixed(1)}+ أو أكثر</div>
                 <button disabled={busy===("pkg-"+pkg.id) || owned || !!profile?.package_id || Number(profile?.balance ?? 0) < Number(pkg.price)}

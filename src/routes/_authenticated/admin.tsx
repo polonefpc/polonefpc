@@ -10,12 +10,13 @@ import { runDailyYields } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin")({ component: Admin });
 
-type Tab = "deposits" | "withdrawals" | "orders" | "users" | "products" | "agents" | "contacts" | "settings" | "help";
+type Tab = "deposits" | "withdrawals" | "orders" | "users" | "packages" | "products" | "agents" | "contacts" | "settings" | "help";
 const TABS: { id: Tab; label: string }[] = [
   { id: "deposits", label: "طلبات الإيداع" },
   { id: "withdrawals", label: "طلبات السحب" },
   { id: "orders", label: "طلبات المنتجات" },
   { id: "users", label: "المستخدمون" },
+  { id: "packages", label: "الباقات" },
   { id: "products", label: "المنتجات" },
   { id: "contacts", label: "وكلاء الإيداع" },
   { id: "agents", label: "تعيين وكلاء" },
@@ -57,6 +58,7 @@ function Admin() {
         {tab === "withdrawals" && <Withdrawals />}
         {tab === "orders" && <Orders />}
         {tab === "users" && <Users />}
+        {tab === "packages" && <Packages />}
         {tab === "products" && <Products />}
         {tab === "contacts" && <Contacts />}
         {tab === "agents" && <Agents />}
@@ -344,6 +346,72 @@ function Products() {
   );
 }
 
+function Packages() {
+  const [items, setItems] = useState<any[]>([]);
+  const [form, setForm] = useState({ name: "", package_type: "", price: "", daily_rate: "" });
+  const [saving, setSaving] = useState(false);
+
+  const load = () => (supabase as any)
+    .from("packages")
+    .select("id,name,package_type,price,daily_rate")
+    .order("price")
+    .then(({ data }: { data: any[] | null }) => setItems(data ?? []));
+
+  useEffect(() => { load(); }, []);
+
+  const add = async () => {
+    const price = Number(form.price);
+    const dailyRate = Number(form.daily_rate);
+    if (!form.name.trim() || !form.package_type.trim()) return toast.error("أدخل اسم ونوع الباقة");
+    if (!Number.isFinite(price) || price <= 0) return toast.error("أدخل سعراً صحيحاً");
+    if (!Number.isFinite(dailyRate) || dailyRate <= 0) return toast.error("أدخل ربحاً يومياً صحيحاً");
+
+    setSaving(true);
+    const { error } = await (supabase as any).from("packages").insert({
+      name: form.name.trim(),
+      package_type: form.package_type.trim(),
+      price,
+      daily_rate: dailyRate,
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+
+    setForm({ name: "", package_type: "", price: "", daily_rate: "" });
+    toast.success("تمت إضافة الباقة");
+    load();
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="glass rounded-xl p-4 space-y-3">
+        <h2 className="font-bold">إضافة باقة جديدة</h2>
+        <div className="grid sm:grid-cols-2 gap-2">
+          <input className="bg-input border border-border rounded px-3 py-2" placeholder="اسم الباقة" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
+          <input className="bg-input border border-border rounded px-3 py-2" placeholder="نوع الباقة" value={form.package_type} onChange={e => setForm({ ...form, package_type: e.target.value })} />
+          <input type="number" min="0.01" step="0.01" className="bg-input border border-border rounded px-3 py-2" placeholder="السعر بالدولار" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} />
+          <input type="number" min="0.01" step="0.01" className="bg-input border border-border rounded px-3 py-2" placeholder="الربح اليومي بالدولار" value={form.daily_rate} onChange={e => setForm({ ...form, daily_rate: e.target.value })} />
+        </div>
+        <button disabled={saving} onClick={add} className="btn-primary w-full rounded px-4 py-2 font-bold disabled:opacity-50">
+          {saving ? "جاري الإضافة..." : "إضافة الباقة"}
+        </button>
+      </div>
+
+      {items.map(pkg => (
+        <div key={pkg.id} className="glass rounded-xl p-4 flex items-center justify-between gap-3">
+          <div>
+            <div className="font-bold">{pkg.name}</div>
+            <div className="text-xs text-muted-foreground mt-1">{pkg.package_type}</div>
+          </div>
+          <div className="text-left shrink-0">
+            <div className="font-black">${Number(pkg.price).toFixed(2)}</div>
+            <div className="text-xs text-success">${Number(pkg.daily_rate).toFixed(2)} يومياً</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 
 function Contacts() {
   const [items, setItems] = useState<any[]>([]);
@@ -506,13 +574,18 @@ function Settings() {
   const runDailyYieldsFn = useServerFn(runDailyYields);
   const runYield = async () => {
     setYieldBusy(true);
-    const result = await runDailyYieldsFn();
-    setYieldBusy(false);
-    if (result.ok) {
-      const processed = result.processed ?? 0;
-      toast.success(processed > 0 ? `تم إرسال الأرباح إلى ${processed} حساب` : "أرباح اليوم مضافة مسبقاً لكل الحسابات المؤهلة");
-    } else {
-      toast.error("فشل التشغيل: " + (result.error ?? "حدث خطأ"));
+    try {
+      const result = await runDailyYieldsFn();
+      if (result.ok) {
+        const processed = result.processed ?? 0;
+        toast.success(processed > 0 ? `تم إرسال أرباح اليوم إلى ${processed} حساب مفعّل` : "لا توجد دفعات جديدة: أرباح اليوم مضافة مسبقاً للحسابات المؤهلة");
+      } else {
+        toast.error("فشل التشغيل: " + (result.error ?? "حدث خطأ"));
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر تشغيل الأرباح اليومية");
+    } finally {
+      setYieldBusy(false);
     }
   };
   const [gift, setGift] = useState("");
@@ -610,7 +683,7 @@ function Settings() {
 
       <div className="glass rounded-xl p-4">
         <div className="font-bold mb-1">تشغيل الأرباح اليومية يدوياً</div>
-        <p className="text-xs text-muted-foreground mb-3">تتم تلقائياً يومياً الساعة 00:14. تُضاف لكل عميل مفعّل قيمة باقته اليومية مرة واحدة في اليوم.</p>
+        <p className="text-xs text-muted-foreground mb-3">تتم تلقائياً يومياً الساعة 00:14 بتوقيت بغداد. تُضاف لكل عميل مفعّل قيمة الربح المحددة في باقته مرة واحدة في اليوم وتتراكم في رصيده.</p>
         <button disabled={yieldBusy} onClick={runYield} className="btn-primary rounded px-4 py-2 font-bold disabled:opacity-50">{yieldBusy ? "جاري التشغيل..." : "تشغيل الآن"}</button>
       </div>
 
