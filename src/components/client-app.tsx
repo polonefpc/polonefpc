@@ -83,13 +83,21 @@ export function useProfile() {
     setLoading(true);
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) return;
-    const [p, pkg, txs, refs] = await Promise.all([
+    const [p, pkg, txs, refs, dep, wd] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", u.user.id).single(),
       supabase.from("packages").select("*").order("id"),
-      supabase.from("daily_yields").select("*").eq("user_id", u.user.id).order("applied_on",{ascending:false}).limit(10),
+      supabase.from("daily_yields").select("*").eq("user_id", u.user.id).order("applied_on",{ascending:false}).limit(30),
       supabase.from("profiles").select("id,email,full_name,created_at,is_active").eq("referred_by", u.user.id).order("created_at", { ascending: false }),
+      supabase.from("deposit_requests").select("*").eq("user_id", u.user.id).order("created_at",{ascending:false}).limit(30),
+      supabase.from("withdrawals").select("*").eq("user_id", u.user.id).order("created_at",{ascending:false}).limit(30),
     ]);
-    setData({ profile: p.data, packages: pkg.data ?? [], yields: txs.data ?? [], refs: refs.data ?? [], user: u.user });
+    const yields = txs.data ?? [];
+    const transactions = [
+      ...yields.map((y: any) => ({ id: `y-${y.id}`, kind: "yield", amount: Number(y.amount), at: y.created_at ?? y.applied_on, status: null })),
+      ...(dep.data ?? []).map((d: any) => ({ id: `d-${d.id}`, kind: "deposit", amount: Number(d.amount), at: d.created_at, status: d.status })),
+      ...(wd.data ?? []).map((w: any) => ({ id: `w-${w.id}`, kind: "withdraw", amount: Number(w.amount), at: w.created_at, status: w.status })),
+    ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+    setData({ profile: p.data, packages: pkg.data ?? [], yields, transactions, refs: refs.data ?? [], user: u.user });
     setLoading(false);
   };
   useEffect(() => { reload(); }, []);
