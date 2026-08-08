@@ -105,7 +105,7 @@ export function useProfile() {
 }
 
 // ───────── tabs ─────────
-export function HomeTab({ profile, packages, refs, yields, reload }: any) {
+export function HomeTab({ profile, packages, refs, yields, transactions, reload }: any) {
   const pkg = packages.find((p: any) => p.id === profile?.package_id);
   const [showBal, setShowBal] = useState(false);
   const code = profile?.referral_code ?? "—";
