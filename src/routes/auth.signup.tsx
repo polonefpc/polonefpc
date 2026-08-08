@@ -12,7 +12,7 @@ export const Route = createFileRoute("/auth/signup")({
   component: Signup,
 });
 
-function safeNext(n: string): string | null {
+function safeNext(n?: string): string | null {
   if (!n || !n.startsWith("/") || n.startsWith("//")) return null;
   return n;
 }
