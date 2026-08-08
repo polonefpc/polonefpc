@@ -5,9 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
 export const Route = createFileRoute("/auth/signup")({
-  validateSearch: (s: Record<string, unknown>) => ({
-    ref: (s.ref as string) || "",
-    next: typeof s.next === "string" ? s.next : "",
+  validateSearch: (s: Record<string, unknown>): { ref?: string; next?: string } => ({
+    ...(typeof s.ref === "string" && s.ref ? { ref: s.ref } : {}),
+    ...(typeof s.next === "string" && s.next ? { next: s.next } : {}),
   }),
   component: Signup,
 });

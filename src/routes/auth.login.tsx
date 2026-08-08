@@ -4,13 +4,12 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth/login")({
-  validateSearch: (s: Record<string, unknown>) => ({
-    next: typeof s.next === "string" ? s.next : "",
-  }),
+  validateSearch: (s: Record<string, unknown>): { next?: string } =>
+    typeof s.next === "string" && s.next ? { next: s.next } : {},
   component: Login,
 });
 
-function safeNext(next: string): string | null {
+function safeNext(next?: string): string | null {
   if (!next || !next.startsWith("/") || next.startsWith("//")) return null;
   return next;
 }
@@ -52,7 +51,7 @@ function Login() {
           <span>ليس لديك حساب؟</span>
           <Link
             to="/auth/signup"
-            search={safeNext(next) ? { next: safeNext(next)! } : undefined}
+            search={safeNext(next) ? { next: safeNext(next)! } : {}}
             className="text-primary font-bold"
           > إنشاء حساب</Link>
         </div>
