@@ -570,6 +570,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      agent_grant_points: {
+        Args: { _agent_id: string; _amount: number; _to_code: string }
+        Returns: undefined
+      }
       apply_daily_yields: { Args: { _apply_date?: string }; Returns: number }
       approve_package_change: {
         Args: { _request_id: string }
