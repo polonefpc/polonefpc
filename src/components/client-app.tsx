@@ -229,15 +229,29 @@ export function HomeTab({ profile, packages, refs, yields, reload }: any) {
       </div>
 
       <div className="glass rounded-3xl p-5">
-        <h3 className="font-bold mb-3">سجل الأرباح اليومية</h3>
-        {yields.length === 0 ? <div className="text-sm text-muted-foreground">لم تبدأ الأرباح بعد. سيبدأ التداول بعد تفعيل باقتك.</div> :
+        <h3 className="font-bold mb-3">سجل المعاملات</h3>
+        {(!transactions || transactions.length === 0) ? <div className="text-sm text-muted-foreground">لا توجد معاملات بعد.</div> :
           <ul className="text-sm divide-y divide-border">
-            {yields.map((y: any) => (
-              <li key={y.id} className="flex justify-between py-2">
-                <span>{y.applied_on}</span>
-                <span className="text-success font-bold">{showBal ? `+$${Number(y.amount).toFixed(2)}` : "+$***"}</span>
-              </li>
-            ))}
+            {transactions.map((t: any) => {
+              const label = t.kind === "yield" ? "ربح يومي" : t.kind === "deposit" ? "إيداع" : "سحب";
+              const color = t.kind === "yield" ? "text-success" : t.kind === "withdraw" ? "text-destructive" : "text-foreground";
+              const sign = t.kind === "withdraw" ? "−" : "+";
+              const st = t.status === "pending" ? " (قيد المراجعة)" : t.status === "rejected" ? " (مرفوض)" : "";
+              return (
+                <li key={t.id} className="flex justify-between py-2 gap-2">
+                  <span className="min-w-0">
+                    <span className="font-medium">{label}</span>
+                    <span className="text-muted-foreground text-xs">{st}</span>
+                    <span className="block text-[11px] text-muted-foreground">
+                      {new Date(t.at).toLocaleString("ar-IQ", { dateStyle: "short", timeStyle: "short" })}
+                    </span>
+                  </span>
+                  <span className={`${color} font-bold whitespace-nowrap`}>
+                    {showBal ? `${sign}$${Number(t.amount).toFixed(2)}` : `${sign}$***`}
+                  </span>
+                </li>
+              );
+            })}
           </ul>}
       </div>
     </div>
