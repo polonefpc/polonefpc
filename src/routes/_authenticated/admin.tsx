@@ -443,6 +443,8 @@ function Agents() {
   const [items, setItems] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [bal, setBal] = useState<Record<string,string>>({});
+  const [open, setOpen] = useState<string | null>(null);
+  const [grants, setGrants] = useState<Record<string, any[]>>({});
   const load = async () => {
     const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role","agent");
     const ids = roles?.map(r=>r.user_id) ?? [];
@@ -452,44 +454,84 @@ function Agents() {
   };
   useEffect(()=>{load();},[]);
   const promote = async () => {
-    if (!search) return;
-    const { data: u } = await supabase.from("profiles").select("id,email").or(`email.eq.${search},id.eq.${search}`).maybeSingle();
-    if (!u) return toast.error("لم يوجد المستخدم");
-    await supabase.from("user_roles").insert({ user_id: u.id, role: "agent" }).then(({error})=>{
-      if (error && !error.message.includes("duplicate")) return toast.error(error.message);
-    });
-    await supabase.from("agent_balances").upsert({ user_id: u.id, balance: 0 });
-    toast.success("تم تعيين الوكيل"); setSearch(""); load();
+    const q = search.trim();
+    if (!q) return;
+    const { data: u } = await supabase.from("profiles").select("id,email")
+      .or(`email.eq.${q},referral_code.eq.${q}`).maybeSingle();
+    let found: any = u;
+    if (!found && /^[0-9a-f-]{36}$/i.test(q)) {
+      const { data: byId } = await supabase.from("profiles").select("id,email").eq("id", q).maybeSingle();
+      found = byId;
+    }
+    if (!found) return toast.error("لم يوجد المستخدم");
+    const { error } = await supabase.from("user_roles").insert({ user_id: found.id, role: "agent" });
+    if (error && !error.message.includes("duplicate")) return toast.error(error.message);
+    await supabase.from("agent_balances").upsert({ user_id: found.id, balance: 0 });
+    toast.success("تم إضافة التاجر"); setSearch(""); load();
   };
-  const setBalance = async (id:string) => {
-    const a = Number(bal[id]); if (a < 0) return;
-    await supabase.from("agent_balances").upsert({ user_id: id, balance: a, updated_at: new Date().toISOString() });
+  const setBalance = async (id:string, mode: "set" | "add") => {
+    const a = Number(bal[id]); if (!a && a !== 0) return;
+    const current = Number(items.find(i=>i.id===id)?.agent_balance ?? 0);
+    const next = mode === "add" ? current + a : a;
+    if (next < 0) return toast.error("قيمة غير صحيحة");
+    await supabase.from("agent_balances").upsert({ user_id: id, balance: next, updated_at: new Date().toISOString() });
     toast.success("تم التحديث"); setBal({...bal,[id]:""}); load();
   };
   const revoke = async (id:string) => {
     await supabase.from("user_roles").delete().eq("user_id",id).eq("role","agent");
     toast.success("تم"); load();
   };
+  const toggle = async (id: string) => {
+    if (open === id) { setOpen(null); return; }
+    setOpen(id);
+    const { data } = await supabase.from("agent_grants")
+      .select("*,profiles!agent_grants_to_user_fkey(email,full_name,referral_code)")
+      .eq("agent_id", id).order("created_at", { ascending: false }).limit(100);
+    setGrants(g => ({ ...g, [id]: data ?? [] }));
+  };
   return (
     <div className="space-y-3">
-      <div className="glass rounded-xl p-4 flex gap-2">
-        <input className="flex-1 bg-input border border-border rounded px-3 py-2" placeholder="إيميل أو معرّف المستخدم" value={search} onChange={e=>setSearch(e.target.value)} />
-        <button onClick={promote} className="btn-primary rounded px-4 py-2 font-bold">تعيين وكيل</button>
+      <div className="glass rounded-xl p-4 space-y-2">
+        <div className="text-sm font-bold">إضافة تاجر</div>
+        <div className="flex gap-2">
+          <input className="flex-1 bg-input border border-border rounded px-3 py-2" placeholder="إيميل أو معرّف الحساب (5 أرقام)" value={search} onChange={e=>setSearch(e.target.value)} />
+          <button onClick={promote} className="btn-primary rounded px-4 py-2 font-bold">إضافة</button>
+        </div>
+        <p className="text-[11px] text-muted-foreground">التاجر يمكنه إرسال النقاط للزبائن مباشرة بدون شروط أو تفعيل باقة.</p>
       </div>
       {items.map(u=>(
         <div key={u.id} className="glass rounded-xl p-4">
           <div className="flex justify-between">
             <div>
               <div className="font-bold">{u.full_name ?? u.email}</div>
-              <div className="text-xs text-muted-foreground">{u.email}</div>
-              <div className="text-sm mt-1">رصيد الوكيل: <b>${Number(u.agent_balance).toFixed(2)}</b></div>
+              <div className="text-xs text-muted-foreground">{u.email} · معرّف: {u.referral_code}</div>
+              <div className="text-sm mt-1">رصيد التاجر: <b>${Number(u.agent_balance).toFixed(2)}</b></div>
             </div>
             <button onClick={()=>revoke(u.id)} className="text-destructive text-xs">إلغاء التعيين</button>
           </div>
-          <div className="flex gap-2 mt-2">
-            <input className="bg-input border border-border rounded px-2 py-1 text-sm w-32" placeholder="رصيد جديد" type="number" value={bal[u.id]??""} onChange={e=>setBal({...bal,[u.id]:e.target.value})} />
-            <button onClick={()=>setBalance(u.id)} className="btn-primary px-3 py-1 rounded text-xs font-bold">حفظ</button>
+          <div className="flex flex-wrap gap-2 mt-2">
+            <input className="bg-input border border-border rounded px-2 py-1 text-sm w-32" placeholder="مبلغ" type="number" value={bal[u.id]??""} onChange={e=>setBal({...bal,[u.id]:e.target.value})} />
+            <button onClick={()=>setBalance(u.id,"add")} className="btn-primary px-3 py-1 rounded text-xs font-bold">+ إضافة</button>
+            <button onClick={()=>setBalance(u.id,"set")} className="glass px-3 py-1 rounded text-xs font-bold">تعيين رصيد</button>
+            <button onClick={()=>toggle(u.id)} className="glass px-3 py-1 rounded text-xs font-bold">{open===u.id?"إخفاء السجل":"سجل التحويلات"}</button>
           </div>
+          {open===u.id && (
+            <div className="mt-3 border-t border-border pt-2">
+              {!grants[u.id] ? <div className="text-xs text-muted-foreground">جاري التحميل...</div> :
+               grants[u.id].length === 0 ? <div className="text-xs text-muted-foreground">لا توجد عمليات</div> :
+                <ul className="text-xs divide-y divide-border">
+                  {grants[u.id].map((g:any)=>(
+                    <li key={g.id} className="py-2 flex justify-between gap-2">
+                      <span className="min-w-0">
+                        <span className="block truncate">{g.profiles?.full_name ?? g.profiles?.email ?? g.to_user}</span>
+                        <span className="block text-muted-foreground">معرّف: {g.profiles?.referral_code ?? "—"} · {new Date(g.created_at).toLocaleString("ar-IQ",{dateStyle:"short",timeStyle:"medium"})}</span>
+                      </span>
+                      <span className="text-success font-bold whitespace-nowrap">+${Number(g.amount).toFixed(2)}</span>
+                    </li>
+                  ))}
+                </ul>}
+            </div>
+          )}
         </div>
       ))}
     </div>
