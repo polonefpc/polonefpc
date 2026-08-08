@@ -83,13 +83,21 @@ export function useProfile() {
     setLoading(true);
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) return;
-    const [p, pkg, txs, refs] = await Promise.all([
+    const [p, pkg, txs, refs, dep, wd] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", u.user.id).single(),
       supabase.from("packages").select("*").order("id"),
-      supabase.from("daily_yields").select("*").eq("user_id", u.user.id).order("applied_on",{ascending:false}).limit(10),
+      supabase.from("daily_yields").select("*").eq("user_id", u.user.id).order("applied_on",{ascending:false}).limit(30),
       supabase.from("profiles").select("id,email,full_name,created_at,is_active").eq("referred_by", u.user.id).order("created_at", { ascending: false }),
+      supabase.from("deposit_requests").select("*").eq("user_id", u.user.id).order("created_at",{ascending:false}).limit(30),
+      supabase.from("withdrawals").select("*").eq("user_id", u.user.id).order("created_at",{ascending:false}).limit(30),
     ]);
-    setData({ profile: p.data, packages: pkg.data ?? [], yields: txs.data ?? [], refs: refs.data ?? [], user: u.user });
+    const yields = txs.data ?? [];
+    const transactions = [
+      ...yields.map((y: any) => ({ id: `y-${y.id}`, kind: "yield", amount: Number(y.amount), at: y.created_at ?? y.applied_on, status: null })),
+      ...(dep.data ?? []).map((d: any) => ({ id: `d-${d.id}`, kind: "deposit", amount: Number(d.amount), at: d.created_at, status: d.status })),
+      ...(wd.data ?? []).map((w: any) => ({ id: `w-${w.id}`, kind: "withdraw", amount: Number(w.amount), at: w.created_at, status: w.status })),
+    ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+    setData({ profile: p.data, packages: pkg.data ?? [], yields, transactions, refs: refs.data ?? [], user: u.user });
     setLoading(false);
   };
   useEffect(() => { reload(); }, []);
@@ -97,7 +105,7 @@ export function useProfile() {
 }
 
 // ───────── tabs ─────────
-export function HomeTab({ profile, packages, refs, yields, reload }: any) {
+export function HomeTab({ profile, packages, refs, yields, transactions, reload }: any) {
   const pkg = packages.find((p: any) => p.id === profile?.package_id);
   const [showBal, setShowBal] = useState(false);
   const code = profile?.referral_code ?? "—";
@@ -221,15 +229,29 @@ export function HomeTab({ profile, packages, refs, yields, reload }: any) {
       </div>
 
       <div className="glass rounded-3xl p-5">
-        <h3 className="font-bold mb-3">سجل الأرباح اليومية</h3>
-        {yields.length === 0 ? <div className="text-sm text-muted-foreground">لم تبدأ الأرباح بعد. سيبدأ التداول بعد تفعيل باقتك.</div> :
+        <h3 className="font-bold mb-3">سجل المعاملات</h3>
+        {(!transactions || transactions.length === 0) ? <div className="text-sm text-muted-foreground">لا توجد معاملات بعد.</div> :
           <ul className="text-sm divide-y divide-border">
-            {yields.map((y: any) => (
-              <li key={y.id} className="flex justify-between py-2">
-                <span>{y.applied_on}</span>
-                <span className="text-success font-bold">{showBal ? `+$${Number(y.amount).toFixed(2)}` : "+$***"}</span>
-              </li>
-            ))}
+            {transactions.map((t: any) => {
+              const label = t.kind === "yield" ? "ربح يومي" : t.kind === "deposit" ? "إيداع" : "سحب";
+              const color = t.kind === "yield" ? "text-success" : t.kind === "withdraw" ? "text-destructive" : "text-foreground";
+              const sign = t.kind === "withdraw" ? "−" : "+";
+              const st = t.status === "pending" ? " (قيد المراجعة)" : t.status === "rejected" ? " (مرفوض)" : "";
+              return (
+                <li key={t.id} className="flex justify-between py-2 gap-2">
+                  <span className="min-w-0">
+                    <span className="font-medium">{label}</span>
+                    <span className="text-muted-foreground text-xs">{st}</span>
+                    <span className="block text-[11px] text-muted-foreground">
+                      {new Date(t.at).toLocaleString("ar-IQ", { dateStyle: "short", timeStyle: "short" })}
+                    </span>
+                  </span>
+                  <span className={`${color} font-bold whitespace-nowrap`}>
+                    {showBal ? `${sign}$${Number(t.amount).toFixed(2)}` : `${sign}$***`}
+                  </span>
+                </li>
+              );
+            })}
           </ul>}
       </div>
     </div>

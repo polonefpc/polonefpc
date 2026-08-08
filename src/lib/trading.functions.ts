@@ -115,3 +115,21 @@ export const requestPackagePurchase = createServerFn({ method: "POST" })
     if (error) return { ok: false, error: friendlyError(error.message) };
     return { ok: true, error: null };
   });
+const agentGrantSchema = z.object({
+  toCode: z.string().min(5).max(64),
+  amount: z.number().positive(),
+});
+
+export const agentGrantPoints = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => agentGrantSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await (supabaseAdmin as any).rpc("agent_grant_points", {
+      _agent_id: context.userId,
+      _to_code: data.toCode.trim(),
+      _amount: data.amount,
+    });
+    if (error) return { ok: false, error: friendlyError(error.message) };
+    return { ok: true, error: null };
+  });

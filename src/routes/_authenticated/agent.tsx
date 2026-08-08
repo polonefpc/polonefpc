@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { agentGrantPoints } from "@/lib/trading.functions";
 import { ArrowLeft, Send, LogOut } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/agent")({ component: AgentPanel });
@@ -30,18 +31,13 @@ function AgentPanel() {
 
   const send = async () => {
     const a = Number(amt);
+    if (!toId.trim()) return toast.error("أدخل معرّف حساب الزبون");
     if (!a || a <= 0) return toast.error("مبلغ غير صحيح");
     if (a > balance) return toast.error("رصيد الوكيل غير كافٍ. اطلب من الأدمن إضافة المزيد.");
     setLoading(true);
-    const { data: u } = await supabase.auth.getUser();
-    const { data: target, error: e0 } = await supabase.from("profiles").select("id,balance").eq("id", toId).maybeSingle();
-    if (e0 || !target) { setLoading(false); return toast.error("لم يوجد الحساب"); }
-    const { error: e1 } = await supabase.from("profiles").update({ balance: Number(target.balance) + a }).eq("id", target.id);
-    if (e1) { setLoading(false); return toast.error(e1.message); }
-    const { error: e2 } = await supabase.from("agent_balances").update({ balance: balance - a, updated_at: new Date().toISOString() }).eq("user_id", u.user!.id);
-    await supabase.from("agent_grants").insert({ agent_id: u.user!.id, to_user: target.id, amount: a });
+    const res = await agentGrantPoints({ data: { toCode: toId.trim(), amount: a } });
     setLoading(false);
-    if (e2) return toast.error(e2.message);
+    if (!res.ok) return toast.error(res.error ?? "فشل الإرسال");
     toast.success("تم إرسال النقاط فوراً");
     setToId(""); setAmt(""); load();
   };
@@ -63,7 +59,7 @@ function AgentPanel() {
         </div>
         <div className="glass rounded-3xl p-6 space-y-3">
           <h2 className="font-bold flex items-center gap-2"><Send className="w-4 h-4 text-primary" /> إرسال نقاط لزبون</h2>
-          <input className="w-full bg-input border border-border rounded-xl px-4 py-3 font-mono text-sm" placeholder="معرّف حساب الزبون" value={toId} onChange={e=>setToId(e.target.value)} />
+          <input className="w-full bg-input border border-border rounded-xl px-4 py-3 font-mono text-sm" placeholder="معرّف حساب الزبون (5 أرقام)" value={toId} onChange={e=>setToId(e.target.value)} />
           <input type="number" step="0.01" className="w-full bg-input border border-border rounded-xl px-4 py-3" placeholder="المبلغ" value={amt} onChange={e=>setAmt(e.target.value)} />
           <button disabled={loading} onClick={send} className="btn-primary w-full rounded-xl py-3 font-bold">{loading?"...":"إرسال فوري"}</button>
         </div>
