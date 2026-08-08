@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { agentGrantPoints } from "@/lib/trading.functions";
 import { ArrowLeft, Send, LogOut } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/agent")({ component: AgentPanel });
@@ -58,7 +59,7 @@ function AgentPanel() {
         </div>
         <div className="glass rounded-3xl p-6 space-y-3">
           <h2 className="font-bold flex items-center gap-2"><Send className="w-4 h-4 text-primary" /> إرسال نقاط لزبون</h2>
-          <input className="w-full bg-input border border-border rounded-xl px-4 py-3 font-mono text-sm" placeholder="معرّف حساب الزبون" value={toId} onChange={e=>setToId(e.target.value)} />
+          <input className="w-full bg-input border border-border rounded-xl px-4 py-3 font-mono text-sm" placeholder="معرّف حساب الزبون (5 أرقام)" value={toId} onChange={e=>setToId(e.target.value)} />
           <input type="number" step="0.01" className="w-full bg-input border border-border rounded-xl px-4 py-3" placeholder="المبلغ" value={amt} onChange={e=>setAmt(e.target.value)} />
           <button disabled={loading} onClick={send} className="btn-primary w-full rounded-xl py-3 font-bold">{loading?"...":"إرسال فوري"}</button>
         </div>
