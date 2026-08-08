@@ -19,7 +19,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "packages", label: "الباقات" },
   { id: "products", label: "المنتجات" },
   { id: "contacts", label: "وكلاء الإيداع" },
-  { id: "agents", label: "تعيين وكلاء" },
+  { id: "agents", label: "التجار" },
   { id: "help", label: "أقسام المساعدة" },
   { id: "settings", label: "الإعدادات" },
 ];
