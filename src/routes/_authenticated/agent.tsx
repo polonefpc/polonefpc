@@ -30,18 +30,13 @@ function AgentPanel() {
 
   const send = async () => {
     const a = Number(amt);
+    if (!toId.trim()) return toast.error("أدخل معرّف حساب الزبون");
     if (!a || a <= 0) return toast.error("مبلغ غير صحيح");
     if (a > balance) return toast.error("رصيد الوكيل غير كافٍ. اطلب من الأدمن إضافة المزيد.");
     setLoading(true);
-    const { data: u } = await supabase.auth.getUser();
-    const { data: target, error: e0 } = await supabase.from("profiles").select("id,balance").eq("id", toId).maybeSingle();
-    if (e0 || !target) { setLoading(false); return toast.error("لم يوجد الحساب"); }
-    const { error: e1 } = await supabase.from("profiles").update({ balance: Number(target.balance) + a }).eq("id", target.id);
-    if (e1) { setLoading(false); return toast.error(e1.message); }
-    const { error: e2 } = await supabase.from("agent_balances").update({ balance: balance - a, updated_at: new Date().toISOString() }).eq("user_id", u.user!.id);
-    await supabase.from("agent_grants").insert({ agent_id: u.user!.id, to_user: target.id, amount: a });
+    const res = await agentGrantPoints({ data: { toCode: toId.trim(), amount: a } });
     setLoading(false);
-    if (e2) return toast.error(e2.message);
+    if (!res.ok) return toast.error(res.error ?? "فشل الإرسال");
     toast.success("تم إرسال النقاط فوراً");
     setToId(""); setAmt(""); load();
   };
