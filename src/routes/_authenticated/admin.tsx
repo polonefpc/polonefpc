@@ -274,24 +274,30 @@ function Products() {
   const [items, setItems] = useState<any[]>([]);
   const [form, setForm] = useState({ name:"", description:"", image_url:"", price:"" });
   const [uploading, setUploading] = useState(false);
-  const load = () => supabase.from("products").select("*").order("created_at",{ascending:false}).then(({data})=>setItems(data ?? []));
+  const [saving, setSaving] = useState(false);
+  const load = async () => {
+    const { data, error } = await supabase.from("products")
+      .select("id,name,description,price,is_available,image_url,created_at")
+      .order("created_at",{ascending:false});
+    if (error) return toast.error("تعذر تحميل المنتجات: " + error.message);
+    setItems(data ?? []);
+  };
   useEffect(()=>{load();},[]);
   const onFile = async (file: File) => {
-    if (file.size > 800 * 1024) {
-      // compress via canvas
-      setUploading(true);
+    setUploading(true);
+    try {
       const dataUrl = await new Promise<string>((res, rej) => {
         const reader = new FileReader();
         reader.onload = () => {
           const img = new Image();
           img.onload = () => {
-            const max = 800;
+            const max = 600;
             const scale = Math.min(1, max / Math.max(img.width, img.height));
-            const w = img.width * scale, h = img.height * scale;
+            const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
             const c = document.createElement("canvas");
             c.width = w; c.height = h;
             c.getContext("2d")!.drawImage(img, 0, 0, w, h);
-            res(c.toDataURL("image/jpeg", 0.75));
+            res(c.toDataURL("image/jpeg", 0.6));
           };
           img.onerror = rej;
           img.src = reader.result as string;
@@ -300,17 +306,38 @@ function Products() {
         reader.readAsDataURL(file);
       });
       setForm(f => ({ ...f, image_url: dataUrl }));
+    } catch {
+      toast.error("تعذر قراءة الصورة");
+    } finally {
       setUploading(false);
-    } else {
-      const reader = new FileReader();
-      reader.onload = () => setForm(f => ({ ...f, image_url: reader.result as string }));
-      reader.readAsDataURL(file);
     }
   };
   const add = async () => {
+    if (saving) return;
     if (!form.name || !form.price) return toast.error("اسم وسعر");
-    await supabase.from("products").insert({ ...form, price: Number(form.price) });
-    setForm({name:"",description:"",image_url:"",price:""}); load();
+    setSaving(true);
+    const { error } = await supabase.from("products").insert({
+      name: form.name,
+      description: form.description || null,
+      image_url: form.image_url || null,
+      price: Number(form.price),
+    });
+    setSaving(false);
+    if (error) return toast.error("تعذر الإضافة: " + error.message);
+    toast.success("تمت إضافة المنتج");
+    setForm({name:"",description:"",image_url:"",price:""});
+    load();
+  };
+  const remove = async (id: string) => {
+    const { error } = await supabase.from("products").delete().eq("id", id);
+    if (error) return toast.error("تعذر الحذف: " + error.message);
+    toast.success("تم الحذف");
+    load();
+  };
+  const toggle = async (p: any) => {
+    const { error } = await supabase.from("products").update({ is_available: !p.is_available }).eq("id", p.id);
+    if (error) return toast.error("تعذر التعديل: " + error.message);
+    load();
   };
   return (
     <div className="space-y-3">
@@ -322,29 +349,34 @@ function Products() {
             {uploading ? "..." : "اختر صورة من الجهاز"}
             <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && onFile(e.target.files[0])} />
           </label>
-          {form.image_url && <img src={form.image_url} className="w-16 h-16 rounded object-cover" />}
+          {form.image_url && <img src={form.image_url} alt="معاينة المنتج" className="w-16 h-16 rounded object-cover" />}
           {form.image_url && <button onClick={()=>setForm({...form,image_url:""})} className="text-destructive text-xs">إزالة</button>}
         </div>
         <textarea className="bg-input border border-border rounded px-3 py-2 sm:col-span-2" placeholder="الوصف" value={form.description} onChange={e=>setForm({...form,description:e.target.value})} />
-        <button onClick={add} className="btn-primary rounded px-4 py-2 font-bold sm:col-span-2">إضافة منتج</button>
+        <button disabled={saving} onClick={add} className="btn-primary rounded px-4 py-2 font-bold sm:col-span-2 disabled:opacity-60">{saving ? "جارٍ الإضافة..." : "إضافة منتج"}</button>
       </div>
       <div className="space-y-2">
+        {items.length === 0 && <div className="text-sm text-muted-foreground text-center py-4">لا توجد منتجات</div>}
         {items.map(p=>(
-          <div key={p.id} className="glass rounded-xl p-3 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              {p.image_url && <img src={p.image_url} className="w-12 h-12 rounded object-cover" />}
-              <div>
-                <div className="font-bold">{p.name}</div>
-                <div className="text-xs">${p.price}</div>
+          <div key={p.id} className="glass rounded-xl p-3 flex justify-between items-center gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              {p.image_url && <img src={p.image_url} alt={p.name} className="w-12 h-12 rounded object-cover" />}
+              <div className="min-w-0">
+                <div className="font-bold truncate">{p.name}</div>
+                <div className="text-xs">${p.price} · {p.is_available ? "متاح" : "مخفي"}</div>
               </div>
             </div>
-            <button onClick={async()=>{await supabase.from("products").delete().eq("id",p.id);load();}} className="text-destructive text-sm">حذف</button>
+            <div className="flex items-center gap-3 shrink-0">
+              <button onClick={()=>toggle(p)} className="text-xs text-primary">{p.is_available ? "إخفاء" : "إظهار"}</button>
+              <button onClick={()=>remove(p.id)} className="text-destructive text-sm">حذف</button>
+            </div>
           </div>
         ))}
       </div>
     </div>
   );
 }
+
 
 function Packages() {
   const [items, setItems] = useState<any[]>([]);
