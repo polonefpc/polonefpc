@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { runDailyYields } from "@/lib/admin.functions";
+import { promoteAgent, revokeAgent, updateAgentBalance } from "@/lib/agent-admin.functions";
 
 
 export const Route = createFileRoute("/_authenticated/admin")({ component: Admin });
@@ -477,6 +478,10 @@ function Agents() {
   const [bal, setBal] = useState<Record<string,string>>({});
   const [open, setOpen] = useState<string | null>(null);
   const [grants, setGrants] = useState<Record<string, any[]>>({});
+  const [saving, setSaving] = useState(false);
+  const promoteAgentFn = useServerFn(promoteAgent);
+  const updateAgentBalanceFn = useServerFn(updateAgentBalance);
+  const revokeAgentFn = useServerFn(revokeAgent);
   const load = async () => {
     const { data: roles } = await supabase.from("user_roles").select("user_id").eq("role","agent");
     const ids = roles?.map(r=>r.user_id) ?? [];
@@ -488,30 +493,28 @@ function Agents() {
   const promote = async () => {
     const q = search.trim();
     if (!q) return;
-    const { data: u } = await supabase.from("profiles").select("id,email")
-      .or(`email.eq.${q},referral_code.eq.${q}`).maybeSingle();
-    let found: any = u;
-    if (!found && /^[0-9a-f-]{36}$/i.test(q)) {
-      const { data: byId } = await supabase.from("profiles").select("id,email").eq("id", q).maybeSingle();
-      found = byId;
+    setSaving(true);
+    try {
+      const result = await promoteAgentFn({ data: { account: q } });
+      if (!result.ok) return toast.error(result.error);
+      toast.success("تم إضافة التاجر");
+      setSearch("");
+      await load();
+    } finally {
+      setSaving(false);
     }
-    if (!found) return toast.error("لم يوجد المستخدم");
-    const { error } = await supabase.from("user_roles").insert({ user_id: found.id, role: "agent" });
-    if (error && !error.message.includes("duplicate")) return toast.error(error.message);
-    await supabase.from("agent_balances").upsert({ user_id: found.id, balance: 0 });
-    toast.success("تم إضافة التاجر"); setSearch(""); load();
   };
   const setBalance = async (id:string, mode: "set" | "add") => {
-    const a = Number(bal[id]); if (!a && a !== 0) return;
-    const current = Number(items.find(i=>i.id===id)?.agent_balance ?? 0);
-    const next = mode === "add" ? current + a : a;
-    if (next < 0) return toast.error("قيمة غير صحيحة");
-    await supabase.from("agent_balances").upsert({ user_id: id, balance: next, updated_at: new Date().toISOString() });
+    const amount = Number(bal[id]);
+    if (!Number.isFinite(amount) || amount < 0) return toast.error("قيمة غير صحيحة");
+    const result = await updateAgentBalanceFn({ data: { userId: id, amount, mode } });
+    if (!result.ok) return toast.error(result.error);
     toast.success("تم التحديث"); setBal({...bal,[id]:""}); load();
   };
   const revoke = async (id:string) => {
-    await supabase.from("user_roles").delete().eq("user_id",id).eq("role","agent");
-    toast.success("تم"); load();
+    const result = await revokeAgentFn({ data: { userId: id } });
+    if (!result.ok) return toast.error(result.error);
+    toast.success("تم إلغاء تعيين التاجر"); load();
   };
   const toggle = async (id: string) => {
     if (open === id) { setOpen(null); return; }
@@ -527,7 +530,7 @@ function Agents() {
         <div className="text-sm font-bold">إضافة تاجر</div>
         <div className="flex gap-2">
           <input className="flex-1 bg-input border border-border rounded px-3 py-2" placeholder="إيميل أو معرّف الحساب (5 أرقام)" value={search} onChange={e=>setSearch(e.target.value)} />
-          <button onClick={promote} className="btn-primary rounded px-4 py-2 font-bold">إضافة</button>
+          <button onClick={promote} disabled={saving} className="btn-primary rounded px-4 py-2 font-bold disabled:opacity-60">{saving ? "جاري الإضافة..." : "إضافة"}</button>
         </div>
         <p className="text-[11px] text-muted-foreground">التاجر يمكنه إرسال النقاط للزبائن مباشرة بدون شروط أو تفعيل باقة.</p>
       </div>
