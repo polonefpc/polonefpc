@@ -41,10 +41,6 @@ function Signup() {
     if (!parsed.success) { toast.error("تأكد من الاسم والبريد وكلمة المرور (8 أحرف على الأقل)"); return; }
     const code = (form.ref_code || "").replace(/\D/g, "");
     setLoading(true);
-    if (code.length === 5) {
-      const { data: refProfile } = await supabase.from("profiles").select("id").eq("referral_code", code).maybeSingle();
-      if (!refProfile) { setLoading(false); toast.error("رمز الإحالة غير موجود — يمكنك تركه فارغًا"); return; }
-    }
     const { error } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
