@@ -22,7 +22,7 @@ const schema = z.object({
   full_name: z.string().trim().min(2).max(80),
   email: z.string().trim().email().max(255),
   password: z.string().min(8).max(72),
-  ref_code: z.string().regex(/^\d{5}$/).optional().or(z.literal("")),
+  ref_code: z.string().trim().max(5).optional(),
 });
 
 function Signup() {
@@ -38,14 +38,19 @@ function Signup() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const parsed = schema.safeParse(form);
-    if (!parsed.success) { toast.error("تأكد من البيانات (رمز الإحالة 5 أرقام)"); return; }
+    if (!parsed.success) { toast.error("تأكد من الاسم والبريد وكلمة المرور (8 أحرف على الأقل)"); return; }
+    const code = (form.ref_code || "").replace(/\D/g, "");
     setLoading(true);
+    if (code.length === 5) {
+      const { data: refProfile } = await supabase.from("profiles").select("id").eq("referral_code", code).maybeSingle();
+      if (!refProfile) { setLoading(false); toast.error("رمز الإحالة غير موجود — يمكنك تركه فارغًا"); return; }
+    }
     const { error } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
         emailRedirectTo: `${window.location.origin}${dest ?? "/dashboard"}`,
-        data: { full_name: form.full_name, ref_code: form.ref_code || undefined },
+        data: { full_name: form.full_name, ...(code.length === 5 ? { ref_code: code } : {}) },
       },
     });
     setLoading(false);
