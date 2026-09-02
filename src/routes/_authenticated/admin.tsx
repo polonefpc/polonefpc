@@ -594,14 +594,51 @@ function Settings() {
   const [wallets, setWallets] = useState<any[]>([]);
   const [wForm, setWForm] = useState({ label:"", address:"", network:"", currency:"", image_url:"" });
   const [wUploading, setWUploading] = useState(false);
+  const [bonusEnabled, setBonusEnabled] = useState(true);
+  const [bonusAmount, setBonusAmount] = useState("25");
+  const [offerEnabled, setOfferEnabled] = useState(true);
+  const [offerTitle, setOfferTitle] = useState("");
+  const [offerGoal, setOfferGoal] = useState("10");
+  const [offerReward, setOfferReward] = useState("94");
   const loadWallets = () => supabase.from("deposit_wallets").select("*").order("sort_order").then(({data})=>setWallets(data ?? []));
   useEffect(()=>{
     supabase.from("settings").select("*").eq("key","deposit_description").maybeSingle().then(({data})=>setDesc(data?.value ?? ""));
     supabase.from("settings").select("*").eq("key","withdraw_description").maybeSingle().then(({data})=>setWithdrawDesc(data?.value ?? ""));
     supabase.from("settings").select("*").eq("key","support_url").maybeSingle().then(({data})=>setSupportUrl(data?.value ?? ""));
     supabase.from("settings").select("*").eq("key","support_enabled").maybeSingle().then(({data})=>setSupportEnabled((data?.value ?? "false") === "true"));
+    supabase.from("settings").select("key,value").in("key",["welcome_bonus_enabled","welcome_bonus_amount","referral_offer_enabled","referral_offer_goal","referral_offer_reward","referral_offer_title"]).then(({data})=>{
+      const m = Object.fromEntries((data ?? []).map((r:any)=>[r.key, r.value]));
+      setBonusEnabled((m.welcome_bonus_enabled ?? "true") === "true");
+      setBonusAmount(m.welcome_bonus_amount ?? "25");
+      setOfferEnabled((m.referral_offer_enabled ?? "true") === "true");
+      setOfferGoal(m.referral_offer_goal ?? "10");
+      setOfferReward(m.referral_offer_reward ?? "94");
+      setOfferTitle(m.referral_offer_title ?? "");
+    });
     loadWallets();
   },[]);
+  const saveBonus = async () => {
+    const a = Number(bonusAmount);
+    if (!Number.isFinite(a) || a < 0) return toast.error("قيمة غير صحيحة");
+    await supabase.from("settings").upsert([
+      { key:"welcome_bonus_enabled", value: bonusEnabled ? "true" : "false", updated_at: new Date().toISOString() },
+      { key:"welcome_bonus_amount", value: String(a), updated_at: new Date().toISOString() },
+    ]);
+    toast.success("تم حفظ إعدادات البونص الترحيبي");
+  };
+  const saveOffer = async () => {
+    const g = Number(offerGoal), r = Number(offerReward);
+    if (!Number.isInteger(g) || g <= 0) return toast.error("عدد الإحالات غير صحيح");
+    if (!Number.isFinite(r) || r <= 0) return toast.error("قيمة المكافأة غير صحيحة");
+    await supabase.from("settings").upsert([
+      { key:"referral_offer_enabled", value: offerEnabled ? "true" : "false", updated_at: new Date().toISOString() },
+      { key:"referral_offer_goal", value: String(g), updated_at: new Date().toISOString() },
+      { key:"referral_offer_reward", value: String(r), updated_at: new Date().toISOString() },
+      { key:"referral_offer_title", value: offerTitle.trim(), updated_at: new Date().toISOString() },
+    ]);
+    toast.success("تم حفظ إعدادات العرض");
+  };
+
   const saveDesc = async () => {
     await supabase.from("settings").upsert([{ key:"deposit_description", value:desc, updated_at: new Date().toISOString() }]);
     toast.success("تم الحفظ");
