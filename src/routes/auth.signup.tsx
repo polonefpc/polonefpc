@@ -30,9 +30,7 @@ function Signup() {
   const { ref, next } = useSearch({ from: "/auth/signup" });
   const dest = safeNext(next);
 
-  const [step, setStep] = useState<"form" | "otp">("form");
   const [form, setForm] = useState({ full_name: "", email: "", password: "", ref_code: ref || "" });
-  const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -41,7 +39,7 @@ function Signup() {
     if (!parsed.success) { toast.error("تأكد من الاسم والبريد وكلمة المرور (8 أحرف على الأقل)"); return; }
     const code = (form.ref_code || "").replace(/\D/g, "");
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
@@ -49,24 +47,21 @@ function Signup() {
         data: { full_name: form.full_name, ...(code.length === 5 ? { ref_code: code } : {}) },
       },
     });
-    setLoading(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("تم إرسال كود التحقق إلى بريدك");
-    setStep("otp");
-  };
+    if (error) { setLoading(false); toast.error(error.message); return; }
 
-  const verify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otp.length < 6) { toast.error("أدخل الكود المكوّن من 6 أرقام"); return; }
-    setLoading(true);
-    const { error } = await supabase.auth.verifyOtp({ email: form.email, token: otp, type: "email" });
+    if (!data.session) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: form.email,
+        password: form.password,
+      });
+      if (signInError) { setLoading(false); toast.error(signInError.message); return; }
+    }
     setLoading(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("تم تفعيل حسابك");
+    toast.success("تم إنشاء حسابك");
     if (dest) { window.location.href = dest; return; }
     nav({ to: "/dashboard" });
-
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10">
@@ -75,29 +70,20 @@ function Signup() {
         <h1 className="text-3xl font-black mt-2 text-gradient">إنشاء حساب جديد</h1>
         <p className="text-sm text-muted-foreground mt-1">انضم إلى polone وابدأ الاستثمار</p>
 
-        {step === "form" ? (
-          <form onSubmit={submit} className="mt-6 space-y-3">
-            <input className="w-full bg-input border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
-              placeholder="الاسم الكامل" value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} />
-            <input type="email" className="w-full bg-input border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
-              placeholder="البريد الإلكتروني" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
-            <input type="password" className="w-full bg-input border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
-              placeholder="كلمة المرور (8 أحرف على الأقل)" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
-            <input inputMode="numeric" maxLength={5}
-              className="w-full bg-input border border-border rounded-xl px-4 py-3 text-center tracking-widest"
-              placeholder="رمز الإحالة (اختياري - 5 أرقام)"
-              value={form.ref_code} onChange={e => setForm({...form, ref_code: e.target.value.replace(/\D/g,"")})} />
-            <button disabled={loading} className="btn-primary w-full rounded-xl py-3 font-bold">{loading ? "..." : "إرسال كود التحقق"}</button>
-          </form>
-        ) : (
-          <form onSubmit={verify} className="mt-6 space-y-3">
-            <p className="text-sm">أدخل الكود الذي وصل إلى <b>{form.email}</b></p>
-            <input inputMode="numeric" maxLength={6} className="w-full text-center text-2xl tracking-widest bg-input border border-border rounded-xl px-4 py-3"
-              placeholder="------" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ""))} />
-            <button disabled={loading} className="btn-primary w-full rounded-xl py-3 font-bold">{loading ? "..." : "تأكيد وتسجيل الدخول"}</button>
-            <button type="button" onClick={() => setStep("form")} className="text-xs text-muted-foreground w-full">رجوع</button>
-          </form>
-        )}
+        <form onSubmit={submit} className="mt-6 space-y-3">
+          <input className="w-full bg-input border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
+            placeholder="الاسم الكامل" value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} />
+          <input type="email" className="w-full bg-input border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
+            placeholder="البريد الإلكتروني" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+          <input type="password" className="w-full bg-input border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
+            placeholder="كلمة المرور (8 أحرف على الأقل)" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
+          <input inputMode="numeric" maxLength={5}
+            className="w-full bg-input border border-border rounded-xl px-4 py-3 text-center tracking-widest"
+            placeholder="رمز الإحالة (اختياري - 5 أرقام)"
+            value={form.ref_code} onChange={e => setForm({...form, ref_code: e.target.value.replace(/\D/g,"")})} />
+          <button disabled={loading} className="btn-primary w-full rounded-xl py-3 font-bold">{loading ? "..." : "إنشاء الحساب"}</button>
+        </form>
+
 
         <div className="mt-6 text-center text-sm text-muted-foreground">
           <span>لديك حساب؟</span><Link to="/auth/login" className="text-primary font-bold"> دخول</Link>

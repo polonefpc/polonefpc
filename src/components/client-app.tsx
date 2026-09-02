@@ -111,9 +111,10 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
   const code = profile?.referral_code ?? "—";
   const copyCode = () => { if (profile?.referral_code) { navigator.clipboard.writeText(code); toast.success("تم نسخ رمز الإحالة"); } };
 
-  // ─── تحدي الإحالة: ادعُ 10 أشخاص واربح 94 USDT ───
-  const GOAL = 10;
-  const REWARD = 94;
+  // ─── تحدي الإحالة (قابل للتحكم من لوحة الأدمن) ───
+  const [offer, setOffer] = useState<{ enabled: boolean; goal: number; reward: number; title: string } | null>(null);
+  const GOAL = offer?.goal ?? 10;
+  const REWARD = offer?.reward ?? 94;
   const refCount = Math.max(Number(profile?.referral_count ?? 0), refs?.length ?? 0);
   const progress = Math.min(refCount, GOAL);
   const pct = Math.round((progress / GOAL) * 100);
@@ -122,7 +123,21 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
     ? `${window.location.origin}/auth/signup?ref=${profile.referral_code}` : "";
 
   useEffect(() => {
-    if (!profile?.id) return;
+    supabase.from("settings").select("key,value")
+      .in("key", ["referral_offer_enabled", "referral_offer_goal", "referral_offer_reward", "referral_offer_title"])
+      .then(({ data }) => {
+        const m = Object.fromEntries((data ?? []).map((r: any) => [r.key, r.value]));
+        setOffer({
+          enabled: (m.referral_offer_enabled ?? "true") === "true",
+          goal: Number(m.referral_offer_goal ?? 10) || 10,
+          reward: Number(m.referral_offer_reward ?? 94) || 94,
+          title: m.referral_offer_title ?? "",
+        });
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!profile?.id || !offer?.enabled) return;
     supabase.from("referral_milestone_claims").select("user_id").eq("user_id", profile.id).maybeSingle()
       .then(({ data }) => {
         const has = !!data;
@@ -131,14 +146,15 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
           supabase.rpc("claim_referral_milestone").then(({ data: r }) => {
             const row: any = Array.isArray(r) ? r[0] : r;
             if (row?.ok) {
-              toast.success(`مبروك! تم إضافة $${REWARD} إلى رصيدك 🎉`);
+              toast.success(`مبروك! تم إضافة $${Number(row.amount ?? REWARD)} إلى رصيدك 🎉`);
               setClaimed(true);
               reload?.();
             }
           });
         }
       });
-  }, [profile?.id, refCount]);
+  }, [profile?.id, refCount, offer?.enabled, GOAL]);
+
 
   const copyShare = () => {
     if (!shareUrl) return;
@@ -203,12 +219,14 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
 
 
       {/* تحدي الإحالة */}
+      {offer?.enabled && (
       <div className="glass rounded-3xl p-5">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
             <div className="text-xs text-muted-foreground">تحدي الإحالة</div>
-            <h3 className="font-extrabold text-base mt-0.5">ادعُ 10 أشخاص واربح <span className="text-primary">94 USDT</span></h3>
+            <h3 className="font-extrabold text-base mt-0.5">{offer.title?.trim() ? offer.title : <>ادعُ {GOAL} أشخاص واربح <span className="text-primary">{REWARD} USDT</span></>}</h3>
           </div>
+
           <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${claimed ? "bg-success/20 text-success" : "bg-primary/15 text-primary"}`}>
             {claimed ? "تم الاستلام" : `${progress}/${GOAL}`}
           </span>
@@ -227,6 +245,8 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
         {claimed && <p className="text-[11px] text-success mt-2">تم إضافة المكافأة إلى رصيدك.</p>}
         {!claimed && refCount >= GOAL && <p className="text-[11px] text-primary mt-2">جارٍ إضافة المكافأة…</p>}
       </div>
+      )}
+
 
       <div className="glass rounded-3xl p-5">
         <h3 className="font-bold mb-3">سجل المعاملات</h3>

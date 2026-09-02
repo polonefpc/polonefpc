@@ -435,12 +435,25 @@ function Packages() {
             <div className="font-bold">{pkg.name}</div>
             <div className="text-xs text-muted-foreground mt-1">{pkg.package_type}</div>
           </div>
-          <div className="text-left shrink-0">
-            <div className="font-black">${Number(pkg.price).toFixed(2)}</div>
-            <div className="text-xs text-success">${Number(pkg.daily_rate).toFixed(2)} يومياً</div>
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="text-left">
+              <div className="font-black">${Number(pkg.price).toFixed(2)}</div>
+              <div className="text-xs text-success">${Number(pkg.daily_rate).toFixed(2)} يومياً</div>
+            </div>
+            <button
+              onClick={async () => {
+                if (!confirm(`حذف الباقة «${pkg.name}»؟`)) return;
+                const { error } = await (supabase as any).from("packages").delete().eq("id", pkg.id);
+                if (error) return toast.error("تعذر الحذف: قد تكون الباقة مرتبطة بحسابات أو طلبات");
+                toast.success("تم حذف الباقة");
+                load();
+              }}
+              className="text-destructive text-sm font-bold px-2 py-1 rounded hover:bg-destructive/10"
+            >حذف</button>
           </div>
         </div>
       ))}
+
     </div>
   );
 }
@@ -581,14 +594,51 @@ function Settings() {
   const [wallets, setWallets] = useState<any[]>([]);
   const [wForm, setWForm] = useState({ label:"", address:"", network:"", currency:"", image_url:"" });
   const [wUploading, setWUploading] = useState(false);
+  const [bonusEnabled, setBonusEnabled] = useState(true);
+  const [bonusAmount, setBonusAmount] = useState("25");
+  const [offerEnabled, setOfferEnabled] = useState(true);
+  const [offerTitle, setOfferTitle] = useState("");
+  const [offerGoal, setOfferGoal] = useState("10");
+  const [offerReward, setOfferReward] = useState("94");
   const loadWallets = () => supabase.from("deposit_wallets").select("*").order("sort_order").then(({data})=>setWallets(data ?? []));
   useEffect(()=>{
     supabase.from("settings").select("*").eq("key","deposit_description").maybeSingle().then(({data})=>setDesc(data?.value ?? ""));
     supabase.from("settings").select("*").eq("key","withdraw_description").maybeSingle().then(({data})=>setWithdrawDesc(data?.value ?? ""));
     supabase.from("settings").select("*").eq("key","support_url").maybeSingle().then(({data})=>setSupportUrl(data?.value ?? ""));
     supabase.from("settings").select("*").eq("key","support_enabled").maybeSingle().then(({data})=>setSupportEnabled((data?.value ?? "false") === "true"));
+    supabase.from("settings").select("key,value").in("key",["welcome_bonus_enabled","welcome_bonus_amount","referral_offer_enabled","referral_offer_goal","referral_offer_reward","referral_offer_title"]).then(({data})=>{
+      const m = Object.fromEntries((data ?? []).map((r:any)=>[r.key, r.value]));
+      setBonusEnabled((m.welcome_bonus_enabled ?? "true") === "true");
+      setBonusAmount(m.welcome_bonus_amount ?? "25");
+      setOfferEnabled((m.referral_offer_enabled ?? "true") === "true");
+      setOfferGoal(m.referral_offer_goal ?? "10");
+      setOfferReward(m.referral_offer_reward ?? "94");
+      setOfferTitle(m.referral_offer_title ?? "");
+    });
     loadWallets();
   },[]);
+  const saveBonus = async () => {
+    const a = Number(bonusAmount);
+    if (!Number.isFinite(a) || a < 0) return toast.error("قيمة غير صحيحة");
+    await supabase.from("settings").upsert([
+      { key:"welcome_bonus_enabled", value: bonusEnabled ? "true" : "false", updated_at: new Date().toISOString() },
+      { key:"welcome_bonus_amount", value: String(a), updated_at: new Date().toISOString() },
+    ]);
+    toast.success("تم حفظ إعدادات البونص الترحيبي");
+  };
+  const saveOffer = async () => {
+    const g = Number(offerGoal), r = Number(offerReward);
+    if (!Number.isInteger(g) || g <= 0) return toast.error("عدد الإحالات غير صحيح");
+    if (!Number.isFinite(r) || r <= 0) return toast.error("قيمة المكافأة غير صحيحة");
+    await supabase.from("settings").upsert([
+      { key:"referral_offer_enabled", value: offerEnabled ? "true" : "false", updated_at: new Date().toISOString() },
+      { key:"referral_offer_goal", value: String(g), updated_at: new Date().toISOString() },
+      { key:"referral_offer_reward", value: String(r), updated_at: new Date().toISOString() },
+      { key:"referral_offer_title", value: offerTitle.trim(), updated_at: new Date().toISOString() },
+    ]);
+    toast.success("تم حفظ إعدادات العرض");
+  };
+
   const saveDesc = async () => {
     await supabase.from("settings").upsert([{ key:"deposit_description", value:desc, updated_at: new Date().toISOString() }]);
     toast.success("تم الحفظ");
@@ -695,6 +745,33 @@ function Settings() {
         <textarea rows={3} className="w-full bg-input border border-border rounded px-3 py-2" value={withdrawDesc} onChange={e=>setWithdrawDesc(e.target.value)} />
         <button onClick={saveWithdrawDesc} className="btn-primary rounded px-4 py-2 font-bold">حفظ وصف السحب</button>
       </div>
+
+      <div className="glass rounded-xl p-4 space-y-2">
+        <div className="font-bold">البونص الترحيبي للحسابات الجديدة</div>
+        <p className="text-xs text-muted-foreground">يُضاف تلقائياً إلى رصيد كل حساب جديد عند التسجيل.</p>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={bonusEnabled} onChange={e=>setBonusEnabled(e.target.checked)} />
+          تفعيل العرض
+        </label>
+        <input type="number" min="0" step="0.01" className="w-full bg-input border border-border rounded px-3 py-2" placeholder="قيمة البونص بالدولار" value={bonusAmount} onChange={e=>setBonusAmount(e.target.value)} />
+        <button onClick={saveBonus} className="btn-primary rounded px-4 py-2 font-bold">حفظ البونص</button>
+      </div>
+
+      <div className="glass rounded-xl p-4 space-y-2">
+        <div className="font-bold">العروض — تحدي الإحالة</div>
+        <p className="text-xs text-muted-foreground">التحكم بعرض «ادعُ 10 أشخاص واربح 94 USDT» الظاهر في الصفحة الرئيسية للعميل.</p>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={offerEnabled} onChange={e=>setOfferEnabled(e.target.checked)} />
+          عرض التحدي للعملاء
+        </label>
+        <input className="w-full bg-input border border-border rounded px-3 py-2" placeholder="عنوان العرض (اختياري)" value={offerTitle} onChange={e=>setOfferTitle(e.target.value)} />
+        <div className="grid sm:grid-cols-2 gap-2">
+          <input type="number" min="1" step="1" className="bg-input border border-border rounded px-3 py-2" placeholder="عدد الإحالات المطلوبة" value={offerGoal} onChange={e=>setOfferGoal(e.target.value)} />
+          <input type="number" min="0.01" step="0.01" className="bg-input border border-border rounded px-3 py-2" placeholder="قيمة المكافأة بالدولار" value={offerReward} onChange={e=>setOfferReward(e.target.value)} />
+        </div>
+        <button onClick={saveOffer} className="btn-primary rounded px-4 py-2 font-bold">حفظ العرض</button>
+      </div>
+
 
       <div className="glass rounded-xl p-4 space-y-2">
         <div className="font-bold">زر الدعم (المحادثة)</div>
