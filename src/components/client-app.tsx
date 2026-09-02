@@ -246,6 +246,8 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
         {claimed && <p className="text-[11px] text-success mt-2">تم إضافة المكافأة إلى رصيدك.</p>}
         {!claimed && refCount >= GOAL && <p className="text-[11px] text-primary mt-2">جارٍ إضافة المكافأة…</p>}
       </div>
+      )}
+
 
       <div className="glass rounded-3xl p-5">
         <h3 className="font-bold mb-3">سجل المعاملات</h3>
