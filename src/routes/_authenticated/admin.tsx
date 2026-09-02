@@ -435,12 +435,25 @@ function Packages() {
             <div className="font-bold">{pkg.name}</div>
             <div className="text-xs text-muted-foreground mt-1">{pkg.package_type}</div>
           </div>
-          <div className="text-left shrink-0">
-            <div className="font-black">${Number(pkg.price).toFixed(2)}</div>
-            <div className="text-xs text-success">${Number(pkg.daily_rate).toFixed(2)} يومياً</div>
+          <div className="flex items-center gap-3 shrink-0">
+            <div className="text-left">
+              <div className="font-black">${Number(pkg.price).toFixed(2)}</div>
+              <div className="text-xs text-success">${Number(pkg.daily_rate).toFixed(2)} يومياً</div>
+            </div>
+            <button
+              onClick={async () => {
+                if (!confirm(`حذف الباقة «${pkg.name}»؟`)) return;
+                const { error } = await (supabase as any).from("packages").delete().eq("id", pkg.id);
+                if (error) return toast.error("تعذر الحذف: قد تكون الباقة مرتبطة بحسابات أو طلبات");
+                toast.success("تم حذف الباقة");
+                load();
+              }}
+              className="text-destructive text-sm font-bold px-2 py-1 rounded hover:bg-destructive/10"
+            >حذف</button>
           </div>
         </div>
       ))}
+
     </div>
   );
 }
