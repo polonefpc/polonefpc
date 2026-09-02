@@ -227,7 +227,6 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
             <h3 className="font-extrabold text-base mt-0.5">{offer.title?.trim() ? offer.title : <>ادعُ {GOAL} أشخاص واربح <span className="text-primary">{REWARD} USDT</span></>}</h3>
           </div>
 
-          </div>
           <span className={`shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full ${claimed ? "bg-success/20 text-success" : "bg-primary/15 text-primary"}`}>
             {claimed ? "تم الاستلام" : `${progress}/${GOAL}`}
           </span>
