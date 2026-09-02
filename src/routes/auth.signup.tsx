@@ -70,29 +70,20 @@ function Signup() {
         <h1 className="text-3xl font-black mt-2 text-gradient">إنشاء حساب جديد</h1>
         <p className="text-sm text-muted-foreground mt-1">انضم إلى polone وابدأ الاستثمار</p>
 
-        {step === "form" ? (
-          <form onSubmit={submit} className="mt-6 space-y-3">
-            <input className="w-full bg-input border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
-              placeholder="الاسم الكامل" value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} />
-            <input type="email" className="w-full bg-input border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
-              placeholder="البريد الإلكتروني" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
-            <input type="password" className="w-full bg-input border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
-              placeholder="كلمة المرور (8 أحرف على الأقل)" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
-            <input inputMode="numeric" maxLength={5}
-              className="w-full bg-input border border-border rounded-xl px-4 py-3 text-center tracking-widest"
-              placeholder="رمز الإحالة (اختياري - 5 أرقام)"
-              value={form.ref_code} onChange={e => setForm({...form, ref_code: e.target.value.replace(/\D/g,"")})} />
-            <button disabled={loading} className="btn-primary w-full rounded-xl py-3 font-bold">{loading ? "..." : "إرسال كود التحقق"}</button>
-          </form>
-        ) : (
-          <form onSubmit={verify} className="mt-6 space-y-3">
-            <p className="text-sm">أدخل الكود الذي وصل إلى <b>{form.email}</b></p>
-            <input inputMode="numeric" maxLength={6} className="w-full text-center text-2xl tracking-widest bg-input border border-border rounded-xl px-4 py-3"
-              placeholder="------" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, ""))} />
-            <button disabled={loading} className="btn-primary w-full rounded-xl py-3 font-bold">{loading ? "..." : "تأكيد وتسجيل الدخول"}</button>
-            <button type="button" onClick={() => setStep("form")} className="text-xs text-muted-foreground w-full">رجوع</button>
-          </form>
-        )}
+        <form onSubmit={submit} className="mt-6 space-y-3">
+          <input className="w-full bg-input border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
+            placeholder="الاسم الكامل" value={form.full_name} onChange={e => setForm({...form, full_name: e.target.value})} />
+          <input type="email" className="w-full bg-input border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
+            placeholder="البريد الإلكتروني" value={form.email} onChange={e => setForm({...form, email: e.target.value})} />
+          <input type="password" className="w-full bg-input border border-border rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-ring"
+            placeholder="كلمة المرور (8 أحرف على الأقل)" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
+          <input inputMode="numeric" maxLength={5}
+            className="w-full bg-input border border-border rounded-xl px-4 py-3 text-center tracking-widest"
+            placeholder="رمز الإحالة (اختياري - 5 أرقام)"
+            value={form.ref_code} onChange={e => setForm({...form, ref_code: e.target.value.replace(/\D/g,"")})} />
+          <button disabled={loading} className="btn-primary w-full rounded-xl py-3 font-bold">{loading ? "..." : "إنشاء الحساب"}</button>
+        </form>
+
 
         <div className="mt-6 text-center text-sm text-muted-foreground">
           <span>لديك حساب؟</span><Link to="/auth/login" className="text-primary font-bold"> دخول</Link>
