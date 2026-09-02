@@ -747,6 +747,33 @@ function Settings() {
       </div>
 
       <div className="glass rounded-xl p-4 space-y-2">
+        <div className="font-bold">البونص الترحيبي للحسابات الجديدة</div>
+        <p className="text-xs text-muted-foreground">يُضاف تلقائياً إلى رصيد كل حساب جديد عند التسجيل.</p>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={bonusEnabled} onChange={e=>setBonusEnabled(e.target.checked)} />
+          تفعيل العرض
+        </label>
+        <input type="number" min="0" step="0.01" className="w-full bg-input border border-border rounded px-3 py-2" placeholder="قيمة البونص بالدولار" value={bonusAmount} onChange={e=>setBonusAmount(e.target.value)} />
+        <button onClick={saveBonus} className="btn-primary rounded px-4 py-2 font-bold">حفظ البونص</button>
+      </div>
+
+      <div className="glass rounded-xl p-4 space-y-2">
+        <div className="font-bold">العروض — تحدي الإحالة</div>
+        <p className="text-xs text-muted-foreground">التحكم بعرض «ادعُ 10 أشخاص واربح 94 USDT» الظاهر في الصفحة الرئيسية للعميل.</p>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={offerEnabled} onChange={e=>setOfferEnabled(e.target.checked)} />
+          عرض التحدي للعملاء
+        </label>
+        <input className="w-full bg-input border border-border rounded px-3 py-2" placeholder="عنوان العرض (اختياري)" value={offerTitle} onChange={e=>setOfferTitle(e.target.value)} />
+        <div className="grid sm:grid-cols-2 gap-2">
+          <input type="number" min="1" step="1" className="bg-input border border-border rounded px-3 py-2" placeholder="عدد الإحالات المطلوبة" value={offerGoal} onChange={e=>setOfferGoal(e.target.value)} />
+          <input type="number" min="0.01" step="0.01" className="bg-input border border-border rounded px-3 py-2" placeholder="قيمة المكافأة بالدولار" value={offerReward} onChange={e=>setOfferReward(e.target.value)} />
+        </div>
+        <button onClick={saveOffer} className="btn-primary rounded px-4 py-2 font-bold">حفظ العرض</button>
+      </div>
+
+
+      <div className="glass rounded-xl p-4 space-y-2">
         <div className="font-bold">زر الدعم (المحادثة)</div>
         <p className="text-xs text-muted-foreground">رابط محادثة الدعم (واتساب، تلغرام، أي رابط). يمكن للعميل تحريك الزر في الشاشة والضغط عليه للانتقال إلى المحادثة.</p>
         <input dir="ltr" className="w-full bg-input border border-border rounded px-3 py-2 text-sm" placeholder="https://wa.me/..." value={supportUrl} onChange={e=>setSupportUrl(e.target.value)} />
