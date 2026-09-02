@@ -30,9 +30,7 @@ function Signup() {
   const { ref, next } = useSearch({ from: "/auth/signup" });
   const dest = safeNext(next);
 
-  const [step, setStep] = useState<"form" | "otp">("form");
   const [form, setForm] = useState({ full_name: "", email: "", password: "", ref_code: ref || "" });
-  const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -41,7 +39,7 @@ function Signup() {
     if (!parsed.success) { toast.error("تأكد من الاسم والبريد وكلمة المرور (8 أحرف على الأقل)"); return; }
     const code = (form.ref_code || "").replace(/\D/g, "");
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
       options: {
@@ -49,24 +47,21 @@ function Signup() {
         data: { full_name: form.full_name, ...(code.length === 5 ? { ref_code: code } : {}) },
       },
     });
-    setLoading(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("تم إرسال كود التحقق إلى بريدك");
-    setStep("otp");
-  };
+    if (error) { setLoading(false); toast.error(error.message); return; }
 
-  const verify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otp.length < 6) { toast.error("أدخل الكود المكوّن من 6 أرقام"); return; }
-    setLoading(true);
-    const { error } = await supabase.auth.verifyOtp({ email: form.email, token: otp, type: "email" });
+    if (!data.session) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: form.email,
+        password: form.password,
+      });
+      if (signInError) { setLoading(false); toast.error(signInError.message); return; }
+    }
     setLoading(false);
-    if (error) { toast.error(error.message); return; }
-    toast.success("تم تفعيل حسابك");
+    toast.success("تم إنشاء حسابك");
     if (dest) { window.location.href = dest; return; }
     nav({ to: "/dashboard" });
-
   };
+
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10">
