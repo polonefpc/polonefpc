@@ -83,13 +83,14 @@ export function useProfile() {
     setLoading(true);
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) return;
-    const [p, pkg, txs, refs, dep, wd] = await Promise.all([
+    const [p, pkg, txs, refs, dep, wd, mrefs] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", u.user.id).single(),
       supabase.from("packages").select("*").order("id"),
       supabase.from("daily_yields").select("*").eq("user_id", u.user.id).order("applied_on",{ascending:false}).limit(30),
       supabase.from("profiles").select("id,email,full_name,created_at,is_active").eq("referred_by", u.user.id).order("created_at", { ascending: false }),
       supabase.from("deposit_requests").select("*").eq("user_id", u.user.id).order("created_at",{ascending:false}).limit(30),
       supabase.from("withdrawals").select("*").eq("user_id", u.user.id).order("created_at",{ascending:false}).limit(30),
+      (supabase as any).from("manual_referrals").select("id,full_name,is_active,created_at").eq("user_id", u.user.id).order("created_at",{ascending:false}),
     ]);
     const yields = txs.data ?? [];
     const transactions = [
