@@ -30,7 +30,7 @@ function Landing() {
   const [packages, setPackages] = useState<any[]>([]);
 
   useEffect(() => {
-    supabase.from("packages").select("*").order("price").then(({ data }) => setPackages(data ?? []));
+    (supabase as any).from("packages").select("*").eq("is_visible", true).order("price").then(({ data }: any) => setPackages(data ?? []));
   }, []);
 
   const packageCards = packages.length > 0 ? packages : [
