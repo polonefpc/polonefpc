@@ -566,9 +566,9 @@ export function ShopTab({ profile, packages, reload }: any) {
         <h3 className="font-bold mb-1">باقات التداول (عقود إلكترونية)</h3>
         <p className="text-xs text-muted-foreground mb-3">اشترِ الباقة برصيدك لتفعيل تداولها اليومي.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {packages?.map((pkg: any) => {
+          {(packages ?? []).filter((p: any) => p.is_visible !== false || profile?.package_id === p.id).map((pkg: any) => {
             const owned = profile?.package_id === pkg.id;
-            const highestRate = Math.max(...(packages ?? []).map((item: any) => Number(item.daily_rate ?? 0)));
+            const highestRate = Math.max(...(packages ?? []).filter((p: any) => p.is_visible !== false).map((item: any) => Number(item.daily_rate ?? 0)));
             const best = Number(pkg.daily_rate) === highestRate;
             return (
               <div key={pkg.id} className={`relative bg-secondary/50 rounded-2xl p-4 ${best ? "ring-2 ring-primary" : ""}`}>
