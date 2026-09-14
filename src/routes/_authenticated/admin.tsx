@@ -386,7 +386,7 @@ function Packages() {
 
   const load = () => (supabase as any)
     .from("packages")
-    .select("id,name,package_type,price,daily_rate")
+    .select("id,name,package_type,price,daily_rate,is_visible")
     .order("price")
     .then(({ data }: { data: any[] | null }) => setItems(data ?? []));
 
