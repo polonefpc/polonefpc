@@ -98,7 +98,11 @@ export function useProfile() {
       ...(dep.data ?? []).map((d: any) => ({ id: `d-${d.id}`, kind: "deposit", amount: Number(d.amount), at: d.created_at, status: d.status })),
       ...(wd.data ?? []).map((w: any) => ({ id: `w-${w.id}`, kind: "withdraw", amount: Number(w.amount), at: w.created_at, status: w.status })),
     ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
-    setData({ profile: p.data, packages: pkg.data ?? [], yields, transactions, refs: refs.data ?? [], user: u.user });
+    const allRefs = [
+      ...(refs.data ?? []),
+      ...((mrefs as any).data ?? []).map((m: any) => ({ id: `m-${m.id}`, email: null, full_name: m.full_name, created_at: m.created_at, is_active: m.is_active })),
+    ].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    setData({ profile: p.data, packages: pkg.data ?? [], yields, transactions, refs: allRefs, user: u.user });
     setLoading(false);
   };
   useEffect(() => { reload(); }, []);
