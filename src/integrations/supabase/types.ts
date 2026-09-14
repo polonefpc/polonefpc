@@ -233,6 +233,41 @@ export type Database = {
         }
         Relationships: []
       }
+      manual_referrals: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          is_active: boolean
+          package_id: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          full_name: string
+          id?: string
+          is_active?: boolean
+          package_id?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          package_id?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_referrals_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       package_change_requests: {
         Row: {
           admin_note: string | null
@@ -291,6 +326,7 @@ export type Database = {
         Row: {
           daily_rate: number
           id: number
+          is_visible: boolean
           name: string
           package_type: string
           price: number
@@ -298,6 +334,7 @@ export type Database = {
         Insert: {
           daily_rate: number
           id?: number
+          is_visible?: boolean
           name: string
           package_type?: string
           price: number
@@ -305,6 +342,7 @@ export type Database = {
         Update: {
           daily_rate?: number
           id?: number
+          is_visible?: boolean
           name?: string
           package_type?: string
           price?: number
@@ -570,6 +608,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_delete_package: { Args: { _id: number }; Returns: string }
       agent_grant_points: {
         Args: { _agent_id: string; _amount: number; _to_code: string }
         Returns: undefined
