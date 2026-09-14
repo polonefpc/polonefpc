@@ -265,8 +265,105 @@ function Users() {
             </select>
             <button onClick={()=>assignPackage(u.id)} className="btn-primary px-2.5 py-1 rounded text-xs font-bold">تفعيل/تغيير الباقة</button>
           </div>
+          <ManualReferrals userId={u.id} packages={packages} onChange={load} />
         </div>
       ))}
+    </div>
+  );
+}
+
+const FAKE_NAMES = ["أحمد علي","محمد حسن","سارة كريم","يوسف عبد","نور الدين","علي صادق","حسين جواد","زينب مصطفى","كرار فاضل","مريم سالم","عمر خالد","ليلى ناصر","مصطفى رعد","هدى جبار","باسم وليد","رقية حيدر","سيف الدين","دعاء عادل","أمير قاسم","تقى منير"];
+
+function ManualReferrals({ userId, packages, onChange }: { userId: string; packages: any[]; onChange: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [list, setList] = useState<any[]>([]);
+  const [count, setCount] = useState("1");
+  const [names, setNames] = useState("");
+  const [active, setActive] = useState(false);
+  const [pkgId, setPkgId] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = () => (supabase as any).from("manual_referrals")
+    .select("id,full_name,is_active,package_id,created_at").eq("user_id", userId)
+    .order("created_at",{ascending:false})
+    .then(({ data }: any) => setList(data ?? []));
+
+  useEffect(() => { if (open) load(); }, [open]);
+
+  const add = async () => {
+    const n = Math.max(0, Math.min(200, Number(count) || 0));
+    const typed = names.split(/[\n,،]+/).map(s=>s.trim()).filter(Boolean);
+    const total = typed.length > 0 ? typed.length : n;
+    if (total <= 0) return toast.error("أدخل عدد الإحالات أو الأسماء");
+    const rows = Array.from({ length: total }, (_, i) => ({
+      user_id: userId,
+      full_name: typed[i] ?? FAKE_NAMES[Math.floor(Math.random()*FAKE_NAMES.length)] + " " + Math.floor(100+Math.random()*900),
+      is_active: active,
+      package_id: active && pkgId ? Number(pkgId) : null,
+    }));
+    setBusy(true);
+    const { error } = await (supabase as any).from("manual_referrals").insert(rows);
+    setBusy(false);
+    if (error) return toast.error(error.message);
+    toast.success(`تمت إضافة ${total} إحالة`);
+    setNames(""); setCount("1");
+    load(); onChange();
+  };
+
+  const removeOne = async (id: string) => {
+    const { error } = await (supabase as any).from("manual_referrals").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    load(); onChange();
+  };
+
+  const removeLast = async () => {
+    const n = Math.max(1, Number(count) || 1);
+    const ids = list.slice(0, n).map(r=>r.id);
+    if (ids.length === 0) return toast.error("لا توجد إحالات وهمية");
+    const { error } = await (supabase as any).from("manual_referrals").delete().in("id", ids);
+    if (error) return toast.error(error.message);
+    toast.success(`تم نقصان ${ids.length} إحالة`);
+    load(); onChange();
+  };
+
+  return (
+    <div className="mt-3 border-t border-border pt-2">
+      <button onClick={()=>setOpen(o=>!o)} className="text-xs font-bold text-primary">
+        {open ? "▲ إخفاء زيادة الإحالات" : "▼ زيادة/نقصان الإحالات"}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2">
+          <div className="flex flex-wrap gap-2 items-center">
+            <input type="number" min="1" className="bg-input border border-border rounded px-2 py-1 text-sm w-24" placeholder="العدد" value={count} onChange={e=>setCount(e.target.value)} />
+            <label className="flex items-center gap-1 text-xs font-bold">
+              <input type="checkbox" checked={active} onChange={e=>setActive(e.target.checked)} /> مع تفعيل باقة
+            </label>
+            {active && (
+              <select className="bg-input border border-border rounded px-2 py-1 text-sm" value={pkgId} onChange={e=>setPkgId(e.target.value)}>
+                <option value="">— بدون باقة —</option>
+                {packages.map(p=> <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            )}
+          </div>
+          <textarea className="w-full bg-input border border-border rounded px-2 py-1 text-sm" rows={2}
+            placeholder="أسماء وهمية (اختياري) — افصل بينها بفاصلة أو سطر جديد. إذا تركته فارغاً تُولَّد أسماء تلقائياً"
+            value={names} onChange={e=>setNames(e.target.value)} />
+          <div className="flex gap-2">
+            <button disabled={busy} onClick={add} className="bg-success/90 text-success-foreground px-2.5 py-1 rounded text-xs font-bold disabled:opacity-50">+ زيادة الإحالات</button>
+            <button onClick={removeLast} className="bg-destructive/80 px-2.5 py-1 rounded text-xs font-bold">− نقصان</button>
+          </div>
+          {list.length > 0 && (
+            <ul className="text-xs divide-y divide-border">
+              {list.map(r=>(
+                <li key={r.id} className="py-1 flex justify-between items-center">
+                  <span>{r.full_name} • {r.is_active ? "مفعّل" : "غير مفعّل"}</span>
+                  <button onClick={()=>removeOne(r.id)} className="text-destructive">حذف</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -386,7 +483,7 @@ function Packages() {
 
   const load = () => (supabase as any)
     .from("packages")
-    .select("id,name,package_type,price,daily_rate")
+    .select("id,name,package_type,price,daily_rate,is_visible")
     .order("price")
     .then(({ data }: { data: any[] | null }) => setItems(data ?? []));
 
@@ -432,7 +529,7 @@ function Packages() {
       {items.map(pkg => (
         <div key={pkg.id} className="glass rounded-xl p-4 flex items-center justify-between gap-3">
           <div>
-            <div className="font-bold">{pkg.name}</div>
+            <div className="font-bold">{pkg.name} {pkg.is_visible === false && <span className="text-[10px] bg-destructive/20 text-destructive px-1.5 py-0.5 rounded">مخفية</span>}</div>
             <div className="text-xs text-muted-foreground mt-1">{pkg.package_type}</div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -442,10 +539,18 @@ function Packages() {
             </div>
             <button
               onClick={async () => {
-                if (!confirm(`حذف الباقة «${pkg.name}»؟`)) return;
-                const { error } = await (supabase as any).from("packages").delete().eq("id", pkg.id);
-                if (error) return toast.error("تعذر الحذف: قد تكون الباقة مرتبطة بحسابات أو طلبات");
-                toast.success("تم حذف الباقة");
+                const { error } = await (supabase as any).from("packages").update({ is_visible: pkg.is_visible === false }).eq("id", pkg.id);
+                if (error) return toast.error(error.message);
+                load();
+              }}
+              className="text-xs text-primary font-bold"
+            >{pkg.is_visible === false ? "إظهار" : "إخفاء"}</button>
+            <button
+              onClick={async () => {
+                if (!confirm(`حذف الباقة «${pkg.name}» نهائياً؟ إذا كان هناك مشتركون بها سيتم إخفاؤها من الباقات.`)) return;
+                const { data, error } = await (supabase as any).rpc("admin_delete_package", { _id: pkg.id });
+                if (error) return toast.error("تعذر الحذف: " + error.message);
+                toast.success(data === "hidden" ? "الباقة مرتبطة بمشتركين — تم إخفاؤها من قسم الباقات" : "تم حذف الباقة نهائياً");
                 load();
               }}
               className="text-destructive text-sm font-bold px-2 py-1 rounded hover:bg-destructive/10"

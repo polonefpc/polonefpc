@@ -83,13 +83,14 @@ export function useProfile() {
     setLoading(true);
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) return;
-    const [p, pkg, txs, refs, dep, wd] = await Promise.all([
+    const [p, pkg, txs, refs, dep, wd, mrefs] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", u.user.id).single(),
       supabase.from("packages").select("*").order("id"),
       supabase.from("daily_yields").select("*").eq("user_id", u.user.id).order("applied_on",{ascending:false}).limit(30),
       supabase.from("profiles").select("id,email,full_name,created_at,is_active").eq("referred_by", u.user.id).order("created_at", { ascending: false }),
       supabase.from("deposit_requests").select("*").eq("user_id", u.user.id).order("created_at",{ascending:false}).limit(30),
       supabase.from("withdrawals").select("*").eq("user_id", u.user.id).order("created_at",{ascending:false}).limit(30),
+      (supabase as any).from("manual_referrals").select("id,full_name,is_active,created_at").eq("user_id", u.user.id).order("created_at",{ascending:false}),
     ]);
     const yields = txs.data ?? [];
     const transactions = [
@@ -97,7 +98,11 @@ export function useProfile() {
       ...(dep.data ?? []).map((d: any) => ({ id: `d-${d.id}`, kind: "deposit", amount: Number(d.amount), at: d.created_at, status: d.status })),
       ...(wd.data ?? []).map((w: any) => ({ id: `w-${w.id}`, kind: "withdraw", amount: Number(w.amount), at: w.created_at, status: w.status })),
     ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
-    setData({ profile: p.data, packages: pkg.data ?? [], yields, transactions, refs: refs.data ?? [], user: u.user });
+    const allRefs = [
+      ...(refs.data ?? []),
+      ...((mrefs as any).data ?? []).map((m: any) => ({ id: `m-${m.id}`, email: null, full_name: m.full_name, created_at: m.created_at, is_active: m.is_active })),
+    ].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    setData({ profile: p.data, packages: pkg.data ?? [], yields, transactions, refs: allRefs, user: u.user });
     setLoading(false);
   };
   useEffect(() => { reload(); }, []);
@@ -561,9 +566,9 @@ export function ShopTab({ profile, packages, reload }: any) {
         <h3 className="font-bold mb-1">باقات التداول (عقود إلكترونية)</h3>
         <p className="text-xs text-muted-foreground mb-3">اشترِ الباقة برصيدك لتفعيل تداولها اليومي.</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {packages?.map((pkg: any) => {
+          {(packages ?? []).filter((p: any) => p.is_visible !== false || profile?.package_id === p.id).map((pkg: any) => {
             const owned = profile?.package_id === pkg.id;
-            const highestRate = Math.max(...(packages ?? []).map((item: any) => Number(item.daily_rate ?? 0)));
+            const highestRate = Math.max(...(packages ?? []).filter((p: any) => p.is_visible !== false).map((item: any) => Number(item.daily_rate ?? 0)));
             const best = Number(pkg.daily_rate) === highestRate;
             return (
               <div key={pkg.id} className={`relative bg-secondary/50 rounded-2xl p-4 ${best ? "ring-2 ring-primary" : ""}`}>
