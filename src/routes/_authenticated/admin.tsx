@@ -432,7 +432,7 @@ function Packages() {
       {items.map(pkg => (
         <div key={pkg.id} className="glass rounded-xl p-4 flex items-center justify-between gap-3">
           <div>
-            <div className="font-bold">{pkg.name}</div>
+            <div className="font-bold">{pkg.name} {pkg.is_visible === false && <span className="text-[10px] bg-destructive/20 text-destructive px-1.5 py-0.5 rounded">مخفية</span>}</div>
             <div className="text-xs text-muted-foreground mt-1">{pkg.package_type}</div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -442,10 +442,18 @@ function Packages() {
             </div>
             <button
               onClick={async () => {
-                if (!confirm(`حذف الباقة «${pkg.name}»؟`)) return;
-                const { error } = await (supabase as any).from("packages").delete().eq("id", pkg.id);
-                if (error) return toast.error("تعذر الحذف: قد تكون الباقة مرتبطة بحسابات أو طلبات");
-                toast.success("تم حذف الباقة");
+                const { error } = await (supabase as any).from("packages").update({ is_visible: pkg.is_visible === false }).eq("id", pkg.id);
+                if (error) return toast.error(error.message);
+                load();
+              }}
+              className="text-xs text-primary font-bold"
+            >{pkg.is_visible === false ? "إظهار" : "إخفاء"}</button>
+            <button
+              onClick={async () => {
+                if (!confirm(`حذف الباقة «${pkg.name}» نهائياً؟ إذا كان هناك مشتركون بها سيتم إخفاؤها من الباقات.`)) return;
+                const { data, error } = await (supabase as any).rpc("admin_delete_package", { _id: pkg.id });
+                if (error) return toast.error("تعذر الحذف: " + error.message);
+                toast.success(data === "hidden" ? "الباقة مرتبطة بمشتركين — تم إخفاؤها من قسم الباقات" : "تم حذف الباقة نهائياً");
                 load();
               }}
               className="text-destructive text-sm font-bold px-2 py-1 rounded hover:bg-destructive/10"
