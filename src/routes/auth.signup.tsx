@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+import { BrandLogo } from "@/components/brand-logo";
 
 export const Route = createFileRoute("/auth/signup")({
   validateSearch: (s: Record<string, unknown>): { ref?: string; next?: string } => ({
@@ -66,6 +67,7 @@ function Signup() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md glass rounded-3xl p-8">
+        <div className="mb-5 flex justify-center"><BrandLogo className="h-14 w-14" nameClassName="text-xl font-extrabold" /></div>
         <Link to="/" className="text-xs text-muted-foreground">→ العودة</Link>
         <h1 className="text-3xl font-black mt-2 text-gradient">إنشاء حساب جديد</h1>
         <p className="text-sm text-muted-foreground mt-1">انضم إلى polone وابدأ الاستثمار</p>

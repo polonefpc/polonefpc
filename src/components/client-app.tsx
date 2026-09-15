@@ -9,6 +9,7 @@ import { requestPackagePurchase, transferPoints } from "@/lib/trading.functions"
 import { LanguageSwitch } from "@/components/language-switch";
 import { HelpButton } from "@/components/help-button";
 import { SupportButton } from "@/components/support-button";
+import { BrandLogo } from "@/components/brand-logo";
 
 type Tab = "home" | "deposit" | "withdraw" | "local" | "shop" | "referral";
 
@@ -34,10 +35,7 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
     <div className="min-h-screen pb-24">
       <SupportButton />
       <header className="sticky top-0 z-20 px-4 py-3 glass border-b border-border flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 shrink-0">
-          <div className="w-8 h-8 rounded-lg btn-primary grid place-items-center font-black text-sm">P</div>
-          <span className="font-extrabold">polone</span>
-        </div>
+        <BrandLogo className="h-8 w-8" />
         <div className="flex items-center gap-2">
           <HelpButton />
           <LanguageSwitch />

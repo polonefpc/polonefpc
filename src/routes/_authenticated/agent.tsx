@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { agentGrantPoints } from "@/lib/trading.functions";
 import { ArrowLeft, Send, LogOut } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 
 export const Route = createFileRoute("/_authenticated/agent")({ component: AgentPanel });
 
@@ -49,7 +50,10 @@ function AgentPanel() {
   return (
     <div className="min-h-screen">
       <header className="px-4 py-3 glass border-b flex items-center justify-between">
-        <h1 className="font-extrabold">لوحة الوكيل</h1>
+        <div className="flex items-center gap-3">
+          <BrandLogo className="h-8 w-8" />
+          <h1 className="font-extrabold">لوحة الوكيل</h1>
+        </div>
         <button onClick={logout} className="glass p-2 rounded-lg"><LogOut className="w-4 h-4" /></button>
       </header>
       <div className="max-w-md mx-auto px-4 py-6 space-y-4">
