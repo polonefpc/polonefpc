@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { LanguageSwitch, useLang, t } from "@/components/language-switch";
 import { HelpButton } from "@/components/help-button";
+import { BrandLogo } from "@/components/brand-logo";
+
+const socialImage = "https://polonefpc.lovable.app/__l5e/assets-v1/d290a190-ef68-4d61-b073-ffec46febab5/polone-social.png";
 
 
 export const Route = createFileRoute("/")({
@@ -19,7 +22,9 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Polone — عقود إلكترونية مربحة" },
       { property: "og:description", content: "منصة عالمية للباقات والعقود الإلكترونية مع إدارة آمنة للرصيد." },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: socialImage },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:image", content: socialImage },
     ],
   }),
   component: Landing,
@@ -48,10 +53,7 @@ function Landing() {
       </div>
 
       <header className="flex items-center justify-between px-6 py-5 max-w-6xl mx-auto pt-14">
-        <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl btn-primary grid place-items-center font-black" translate="no">P</div>
-          <span className="text-xl font-extrabold tracking-tight" translate="no" suppressHydrationWarning>polone</span>
-        </div>
+        <BrandLogo className="h-10 w-10" nameClassName="text-xl font-extrabold" />
         <nav className="flex gap-3 text-sm">
           <Link to="/auth/login" className="px-4 py-2 rounded-lg hover:bg-secondary transition">{t("nav_login", lang)}</Link>
           <Link to="/auth/signup" className="btn-primary px-4 py-2 rounded-lg font-semibold">{t("nav_signup", lang)}</Link>

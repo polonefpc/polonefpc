@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, RefreshCw, Wallet } from "lucide-react";
+import { BrandLogo } from "@/components/brand-logo";
 
 export const Route = createFileRoute("/_authenticated/wallet")({ component: WalletCard });
 
@@ -53,10 +54,7 @@ function WalletCard() {
             <div className="absolute -bottom-20 -left-10 w-60 h-60 rounded-full bg-white/10 blur-2xl" />
             <div className="relative">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-9 h-9 rounded-xl bg-white/20 grid place-items-center font-black">P</div>
-                  <div className="font-extrabold tracking-widest">polone</div>
-                </div>
+                <BrandLogo className="h-10 w-10" nameClassName="font-extrabold" />
                 <Wallet className="w-6 h-6 opacity-80" />
               </div>
 

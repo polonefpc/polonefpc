@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { BrandLogo } from "@/components/brand-logo";
 
 export const Route = createFileRoute("/auth/forgot")({ component: Forgot });
 
@@ -41,6 +42,7 @@ function Forgot() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md glass rounded-3xl p-8">
+        <div className="mb-5 flex justify-center"><BrandLogo className="h-14 w-14" nameClassName="text-xl font-extrabold" /></div>
         <Link to="/auth/login" className="text-xs text-muted-foreground">→ العودة</Link>
         <h1 className="text-3xl font-black mt-2 text-gradient">استرجاع كلمة المرور</h1>
 

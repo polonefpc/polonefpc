@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { runDailyYields } from "@/lib/admin.functions";
 import { promoteAgent, revokeAgent, updateAgentBalance } from "@/lib/agent-admin.functions";
+import { BrandLogo } from "@/components/brand-logo";
 
 
 export const Route = createFileRoute("/_authenticated/admin")({ component: Admin });
@@ -45,7 +46,10 @@ function Admin() {
     <div className="min-h-screen">
       <header className="px-4 py-3 glass border-b flex items-center justify-between">
         <Link to="/dashboard" className="flex items-center gap-1 text-sm"><ArrowLeft className="w-4 h-4" /> العودة</Link>
-        <h1 className="font-extrabold">لوحة الأدمن</h1>
+        <div className="flex items-center gap-3">
+          <BrandLogo className="h-8 w-8" />
+          <h1 className="font-extrabold">لوحة الأدمن</h1>
+        </div>
         <div />
       </header>
       <div className="max-w-5xl mx-auto px-4 py-4">
