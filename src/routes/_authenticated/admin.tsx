@@ -10,7 +10,17 @@ import { promoteAgent, revokeAgent, updateAgentBalance } from "@/lib/agent-admin
 import { BrandLogo } from "@/components/brand-logo";
 
 
-export const Route = createFileRoute("/_authenticated/admin")({ component: Admin });
+export const Route = createFileRoute("/_authenticated/admin")({
+  head: () => ({ meta: [
+    { title: "لوحة الإدارة — Polone" },
+    { name: "description", content: "إدارة حسابات وعمليات وإعدادات منصة Polone." },
+    { property: "og:title", content: "لوحة الإدارة — Polone" },
+    { property: "og:description", content: "إدارة حسابات وعمليات وإعدادات منصة Polone." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
+  component: Admin,
+});
 
 type Tab = "deposits" | "withdrawals" | "orders" | "users" | "packages" | "products" | "agents" | "contacts" | "settings" | "help";
 const TABS: { id: Tab; label: string }[] = [
@@ -43,7 +53,7 @@ function Admin() {
   if (!allowed) return <div className="min-h-screen grid place-items-center">...</div>;
 
   return (
-    <div className="min-h-screen">
+    <div className="internal-app min-h-screen">
       <header className="px-4 py-3 glass border-b flex items-center justify-between">
         <Link to="/dashboard" className="flex items-center gap-1 text-sm"><ArrowLeft className="w-4 h-4" /> العودة</Link>
         <div className="flex items-center gap-3">
@@ -709,13 +719,17 @@ function Settings() {
   const [offerTitle, setOfferTitle] = useState("");
   const [offerGoal, setOfferGoal] = useState("10");
   const [offerReward, setOfferReward] = useState("94");
+  const [signalEnabled, setSignalEnabled] = useState(false);
+  const [signalDirection, setSignalDirection] = useState<"up" | "down">("up");
+  const [signalText, setSignalText] = useState("");
+  const [tabVisibility, setTabVisibility] = useState({ deposit: true, withdraw: true, local: true, shop: true, referral: true });
   const loadWallets = () => supabase.from("deposit_wallets").select("*").order("sort_order").then(({data})=>setWallets(data ?? []));
   useEffect(()=>{
     supabase.from("settings").select("*").eq("key","deposit_description").maybeSingle().then(({data})=>setDesc(data?.value ?? ""));
     supabase.from("settings").select("*").eq("key","withdraw_description").maybeSingle().then(({data})=>setWithdrawDesc(data?.value ?? ""));
     supabase.from("settings").select("*").eq("key","support_url").maybeSingle().then(({data})=>setSupportUrl(data?.value ?? ""));
     supabase.from("settings").select("*").eq("key","support_enabled").maybeSingle().then(({data})=>setSupportEnabled((data?.value ?? "false") === "true"));
-    supabase.from("settings").select("key,value").in("key",["welcome_bonus_enabled","welcome_bonus_amount","referral_offer_enabled","referral_offer_goal","referral_offer_reward","referral_offer_title"]).then(({data})=>{
+    supabase.from("settings").select("key,value").in("key",["welcome_bonus_enabled","welcome_bonus_amount","referral_offer_enabled","referral_offer_goal","referral_offer_reward","referral_offer_title","market_signal_enabled","market_signal_direction","market_signal_text","tab_deposit_visible","tab_withdraw_visible","tab_local_visible","tab_shop_visible","tab_referral_visible"]).then(({data})=>{
       const m = Object.fromEntries((data ?? []).map((r:any)=>[r.key, r.value]));
       setBonusEnabled((m.welcome_bonus_enabled ?? "true") === "true");
       setBonusAmount(m.welcome_bonus_amount ?? "25");
@@ -723,6 +737,16 @@ function Settings() {
       setOfferGoal(m.referral_offer_goal ?? "10");
       setOfferReward(m.referral_offer_reward ?? "94");
       setOfferTitle(m.referral_offer_title ?? "");
+      setSignalEnabled((m.market_signal_enabled ?? "false") === "true");
+      setSignalDirection(m.market_signal_direction === "down" ? "down" : "up");
+      setSignalText(m.market_signal_text ?? "");
+      setTabVisibility({
+        deposit: (m.tab_deposit_visible ?? "true") === "true",
+        withdraw: (m.tab_withdraw_visible ?? "true") === "true",
+        local: (m.tab_local_visible ?? "true") === "true",
+        shop: (m.tab_shop_visible ?? "true") === "true",
+        referral: (m.tab_referral_visible ?? "true") === "true",
+      });
     });
     loadWallets();
   },[]);
@@ -746,6 +770,26 @@ function Settings() {
       { key:"referral_offer_title", value: offerTitle.trim(), updated_at: new Date().toISOString() },
     ]);
     toast.success("تم حفظ إعدادات العرض");
+  };
+  const saveSignal = async () => {
+    const { error } = await supabase.from("settings").upsert([
+      { key:"market_signal_enabled", value: signalEnabled ? "true" : "false", updated_at: new Date().toISOString() },
+      { key:"market_signal_direction", value: signalDirection, updated_at: new Date().toISOString() },
+      { key:"market_signal_text", value: signalText.trim(), updated_at: new Date().toISOString() },
+    ]);
+    if (error) return toast.error(error.message);
+    toast.success("تم تحديث مؤشر الاتجاه");
+  };
+  const saveTabVisibility = async () => {
+    const { error } = await supabase.from("settings").upsert([
+      { key:"tab_deposit_visible", value: String(tabVisibility.deposit), updated_at: new Date().toISOString() },
+      { key:"tab_withdraw_visible", value: String(tabVisibility.withdraw), updated_at: new Date().toISOString() },
+      { key:"tab_local_visible", value: String(tabVisibility.local), updated_at: new Date().toISOString() },
+      { key:"tab_shop_visible", value: String(tabVisibility.shop), updated_at: new Date().toISOString() },
+      { key:"tab_referral_visible", value: String(tabVisibility.referral), updated_at: new Date().toISOString() },
+    ]);
+    if (error) return toast.error(error.message);
+    toast.success("تم حفظ الأقسام الظاهرة للعملاء");
   };
 
   const saveDesc = async () => {
@@ -879,6 +923,36 @@ function Settings() {
           <input type="number" min="0.01" step="0.01" className="bg-input border border-border rounded px-3 py-2" placeholder="قيمة المكافأة بالدولار" value={offerReward} onChange={e=>setOfferReward(e.target.value)} />
         </div>
         <button onClick={saveOffer} className="btn-primary rounded px-4 py-2 font-bold">حفظ العرض</button>
+      </div>
+
+      <div className="glass rounded-xl p-4 space-y-3">
+        <div className="font-bold">مؤشر الاتجاه في الرئيسية</div>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={signalEnabled} onChange={e=>setSignalEnabled(e.target.checked)} />
+          عرض المؤشر للعملاء
+        </label>
+        <div className="grid grid-cols-2 gap-2" role="group" aria-label="اتجاه المؤشر">
+          <button onClick={()=>setSignalDirection("up")} className={`rounded-lg border px-3 py-2 font-bold ${signalDirection === "up" ? "bg-success/20 text-success border-success" : "bg-input border-border"}`}>↑ مرتفع</button>
+          <button onClick={()=>setSignalDirection("down")} className={`rounded-lg border px-3 py-2 font-bold ${signalDirection === "down" ? "bg-destructive/20 text-destructive border-destructive" : "bg-input border-border"}`}>↓ منخفض</button>
+        </div>
+        <textarea rows={3} dir="auto" className="w-full bg-input border border-border rounded px-3 py-2" placeholder="اكتب الأرقام والحروف التي تظهر تحت السهم" value={signalText} onChange={e=>setSignalText(e.target.value)} />
+        <button onClick={saveSignal} className="btn-primary rounded px-4 py-2 font-bold">حفظ المؤشر</button>
+      </div>
+
+      <div className="glass rounded-xl p-4 space-y-3">
+        <div className="font-bold">الأقسام الظاهرة للعملاء</div>
+        <p className="text-xs text-muted-foreground">الصفحة الرئيسية تبقى ظاهرة دائماً.</p>
+        <div className="grid sm:grid-cols-2 gap-2">
+          {([
+            ["deposit", "الإيداع"], ["withdraw", "السحب"], ["local", "الإيداع المحلي"], ["shop", "الباقات"], ["referral", "الإحالة"],
+          ] as const).map(([key, label]) => (
+            <label key={key} className="flex items-center justify-between gap-3 rounded-lg bg-secondary/40 px-3 py-2 text-sm">
+              <span>{label}</span>
+              <input type="checkbox" checked={tabVisibility[key]} onChange={e=>setTabVisibility(current=>({ ...current, [key]: e.target.checked }))} />
+            </label>
+          ))}
+        </div>
+        <button onClick={saveTabVisibility} className="btn-primary rounded px-4 py-2 font-bold">حفظ ظهور الأقسام</button>
       </div>
 
 

@@ -35,6 +35,7 @@
   --color-ring: var(--ring);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-signal-glow: var(--signal-glow);
 }
 
 :root {
@@ -80,6 +81,7 @@
   --gradient-card: linear-gradient(160deg, oklch(0.22 0.05 260 / 0.9), oklch(0.15 0.03 260 / 0.9));
   --shadow-glow: 0 0 40px oklch(0.65 0.21 255 / 0.35);
   --shadow-card: 0 10px 30px -10px oklch(0 0 0 / 0.6);
+  --signal-glow: oklch(0.74 0.18 165);
 }
 
 .dark { color-scheme: dark; }
@@ -115,4 +117,36 @@
     background-clip: text;
     color: transparent;
   }
+
+  .internal-app {
+    background:
+      linear-gradient(145deg, color-mix(in oklab, var(--surface) 88%, var(--success) 12%), var(--background) 42%),
+      var(--background);
+    min-height: 100vh;
+  }
+  .internal-app .glass {
+    background: linear-gradient(155deg, color-mix(in oklab, var(--surface-2) 86%, var(--success) 14%), color-mix(in oklab, var(--surface) 94%, transparent));
+    border-color: color-mix(in oklab, var(--border) 72%, var(--success) 28%);
+    box-shadow: 0 14px 34px -24px color-mix(in oklab, var(--success) 45%, transparent);
+  }
+  .market-signal {
+    overflow: hidden;
+    position: relative;
+  }
+  .market-signal-up { color: var(--success); }
+  .market-signal-down { color: var(--destructive); }
+  .market-signal-icon {
+    animation: signal-pulse 1.8s ease-in-out infinite;
+    width: fit-content;
+    filter: drop-shadow(0 0 12px currentColor);
+  }
+}
+
+@keyframes signal-pulse {
+  0%, 100% { transform: translateY(2px) scale(0.97); opacity: 0.82; }
+  50% { transform: translateY(-3px) scale(1.04); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .market-signal-icon { animation: none; }
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, Package, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, Wallet, AlertTriangle, Info } from "lucide-react";
+import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, Package, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, Wallet, AlertTriangle, Info, TrendingUp, TrendingDown } from "lucide-react";
 import { toast } from "sonner";
 import type { Role } from "@/lib/auth";
 import { requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
@@ -24,7 +24,28 @@ const TABS: { id: Tab; label: string; icon: typeof Home }[] = [
 
 export function ClientShell({ children, userEmail, roles }: { children: (tab: Tab) => React.ReactNode; userEmail: string; roles: Role[] }) {
   const [tab, setTab] = useState<Tab>("home");
+  const [visibleTabs, setVisibleTabs] = useState<Record<Tab, boolean>>({
+    home: true, deposit: true, withdraw: true, local: true, shop: true, referral: true,
+  });
   const nav = useNavigate();
+
+  useEffect(() => {
+    supabase.from("settings").select("key,value").in("key", [
+      "tab_deposit_visible", "tab_withdraw_visible", "tab_local_visible", "tab_shop_visible", "tab_referral_visible",
+    ]).then(({ data }) => {
+      const values = Object.fromEntries((data ?? []).map(row => [row.key, row.value]));
+      const next: Record<Tab, boolean> = {
+        home: true,
+        deposit: (values.tab_deposit_visible ?? "true") === "true",
+        withdraw: (values.tab_withdraw_visible ?? "true") === "true",
+        local: (values.tab_local_visible ?? "true") === "true",
+        shop: (values.tab_shop_visible ?? "true") === "true",
+        referral: (values.tab_referral_visible ?? "true") === "true",
+      };
+      setVisibleTabs(next);
+      setTab(current => next[current] ? current : "home");
+    });
+  }, []);
 
   const logout = async () => {
     await supabase.auth.signOut();
@@ -32,7 +53,7 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
   };
 
   return (
-    <div className="min-h-screen pb-24">
+    <div className="internal-app min-h-screen pb-24">
       <SupportButton />
       <header className="sticky top-0 z-20 px-4 py-3 glass border-b border-border flex items-center justify-between gap-2">
         <BrandLogo className="h-8 w-8" />
@@ -58,7 +79,7 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
       <main className="max-w-2xl mx-auto px-4 py-4">{children(tab)}</main>
 
       <nav className="fixed bottom-3 left-3 right-3 max-w-2xl mx-auto glass rounded-2xl p-2 flex justify-around z-30">
-        {TABS.map(t => {
+        {TABS.filter(t => visibleTabs[t.id]).map(t => {
           const Icon = t.icon;
           const active = tab === t.id;
           return (
@@ -116,6 +137,7 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
 
   // ─── تحدي الإحالة (قابل للتحكم من لوحة الأدمن) ───
   const [offer, setOffer] = useState<{ enabled: boolean; goal: number; reward: number; title: string } | null>(null);
+  const [marketSignal, setMarketSignal] = useState<{ enabled: boolean; direction: "up" | "down"; text: string } | null>(null);
   const GOAL = offer?.goal ?? 10;
   const REWARD = offer?.reward ?? 94;
   const refCount = Math.max(Number(profile?.referral_count ?? 0), refs?.length ?? 0);
@@ -127,7 +149,7 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
 
   useEffect(() => {
     supabase.from("settings").select("key,value")
-      .in("key", ["referral_offer_enabled", "referral_offer_goal", "referral_offer_reward", "referral_offer_title"])
+      .in("key", ["referral_offer_enabled", "referral_offer_goal", "referral_offer_reward", "referral_offer_title", "market_signal_enabled", "market_signal_direction", "market_signal_text"])
       .then(({ data }) => {
         const m = Object.fromEntries((data ?? []).map((r: any) => [r.key, r.value]));
         setOffer({
@@ -135,6 +157,11 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
           goal: Number(m.referral_offer_goal ?? 10) || 10,
           reward: Number(m.referral_offer_reward ?? 94) || 94,
           title: m.referral_offer_title ?? "",
+        });
+        setMarketSignal({
+          enabled: (m.market_signal_enabled ?? "false") === "true",
+          direction: m.market_signal_direction === "down" ? "down" : "up",
+          text: m.market_signal_text ?? "",
         });
       });
   }, []);
@@ -177,6 +204,15 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
           <Copy className="w-4 h-4 text-primary" />
         </button>
       </div>
+
+      {marketSignal?.enabled && (
+        <div className={`market-signal glass rounded-2xl px-5 py-4 text-center ${marketSignal.direction === "up" ? "market-signal-up" : "market-signal-down"}`}>
+          <div className="market-signal-icon mx-auto" aria-label={marketSignal.direction === "up" ? "اتجاه مرتفع" : "اتجاه منخفض"}>
+            {marketSignal.direction === "up" ? <TrendingUp className="h-14 w-14" /> : <TrendingDown className="h-14 w-14" />}
+          </div>
+          {marketSignal.text.trim() && <div className="mt-2 whitespace-pre-wrap text-lg font-black" dir="auto">{marketSignal.text}</div>}
+        </div>
+      )}
 
       {/* مستطيل الملف التعريفي */}
       <div className="glass rounded-2xl p-5">

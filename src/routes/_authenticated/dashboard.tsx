@@ -4,7 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { ClientShell, HomeTab, DepositTab, WithdrawTab, LocalTab, ShopTab, ReferralTab, useProfile } from "@/components/client-app";
 import type { Role } from "@/lib/auth";
 
-export const Route = createFileRoute("/_authenticated/dashboard")({ component: Dashboard });
+export const Route = createFileRoute("/_authenticated/dashboard")({
+  head: () => ({ meta: [
+    { title: "حسابي — Polone" },
+    { name: "description", content: "المحفظة الرقمية وإدارة معاملات حساب Polone." },
+    { property: "og:title", content: "حسابي — Polone" },
+    { property: "og:description", content: "المحفظة الرقمية وإدارة معاملات حساب Polone." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
+  component: Dashboard,
+});
 
 function Dashboard() {
   const state = useProfile();
