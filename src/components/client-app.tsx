@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, Package, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, Wallet, AlertTriangle, Info, TrendingUp, TrendingDown } from "lucide-react";
+import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, Package, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, Wallet, AlertTriangle, Info, ChevronUp, ChevronDown, X, Bell } from "lucide-react";
 import { toast } from "sonner";
 import type { Role } from "@/lib/auth";
 import { requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
@@ -76,6 +76,8 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
         </div>
       </header>
 
+      <ClientNotifications />
+
       <main className="max-w-2xl mx-auto px-4 py-4">{children(tab)}</main>
 
       <nav className="fixed bottom-3 left-3 right-3 max-w-2xl mx-auto glass rounded-2xl p-2 flex justify-around z-30">
@@ -92,6 +94,113 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
         })}
       </nav>
     </div>
+  );
+}
+
+function ClientNotifications() {
+  const [items, setItems] = useState<any[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      const [notices, dismissed] = await Promise.all([
+        (supabase as any).from("notifications").select("id,message,created_at,target_user_id").order("created_at", { ascending: false }).limit(20),
+        (supabase as any).from("notification_dismissals").select("notification_id").eq("user_id", data.user.id),
+      ]);
+      const hidden = new Set((dismissed.data ?? []).map((row: any) => row.notification_id));
+      if (active) setItems((notices.data ?? []).filter((notice: any) => !hidden.has(notice.id)));
+    });
+    return () => { active = false; };
+  }, []);
+
+  const dismiss = async (id: string) => {
+    setItems(current => current.filter(item => item.id !== id));
+    const { data } = await supabase.auth.getUser();
+    if (data.user) await (supabase as any).from("notification_dismissals").upsert({ notification_id: id, user_id: data.user.id });
+  };
+
+  const current = items[0];
+  useEffect(() => {
+    if (!current) return;
+    const timer = window.setTimeout(() => dismiss(current.id), 10_000);
+    return () => window.clearTimeout(timer);
+  }, [current?.id]);
+
+  if (!current) return null;
+  return (
+    <div className="notification-banner fixed top-3 left-3 right-3 z-50 mx-auto max-w-xl animate-slide-in-right" role="status">
+      <div className="flex items-start gap-3 rounded-xl border border-primary/40 bg-popover px-4 py-3 shadow-2xl">
+        <Bell className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+        <p className="min-w-0 flex-1 whitespace-pre-wrap text-sm font-bold" dir="auto">{current.message}</p>
+        <button onClick={() => dismiss(current.id)} className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-secondary" title="إغلاق الإشعار" aria-label="إغلاق الإشعار">
+          <X className="h-4 w-4" />
+        </button>
+        <span className="notification-timer absolute inset-x-0 bottom-0 h-0.5 bg-primary" />
+      </div>
+    </div>
+  );
+}
+
+function MarketArrow({ direction }: { direction: "up" | "down" }) {
+  return (
+    <svg className={`market-arrow ${direction === "up" ? "market-arrow-up" : "market-arrow-down"}`} viewBox="0 0 320 96" role="img" aria-label={direction === "up" ? "اتجاه مرتفع" : "اتجاه منخفض"}>
+      <defs>
+        <marker id={`signal-head-${direction}`} markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto" markerUnits="strokeWidth">
+          <path d="M0,0 L9,4.5 L0,9 Z" fill="currentColor" />
+        </marker>
+      </defs>
+      <path className="market-arrow-shadow" d="M14 78 L69 53 L116 67 L169 31 L224 45 L295 12" />
+      <path className="market-arrow-line" d="M14 78 L69 53 L116 67 L169 31 L224 45 L295 12" markerEnd={`url(#signal-head-${direction})`} />
+    </svg>
+  );
+}
+
+function HomeAdvertisements() {
+  const [items, setItems] = useState<any[]>([]);
+  const [index, setIndex] = useState(0);
+  const [touchY, setTouchY] = useState<number | null>(null);
+
+  useEffect(() => {
+    (supabase as any).from("advertisements").select("*").eq("is_active", true).order("sort_order").order("created_at")
+      .then(({ data }: any) => setItems(data ?? []));
+  }, []);
+
+  const move = (delta: number) => setIndex(current => (current + delta + items.length) % items.length);
+  if (!items.length) return null;
+  const item = items[index];
+  const content = (
+    <>
+      {item.image_url && <img src={item.image_url} alt={item.title || "إعلان Polone"} className="absolute inset-0 h-full w-full object-cover" />}
+      <div className={`absolute inset-0 ${item.image_url ? "advertisement-overlay" : "bg-secondary"}`} />
+      <div className="relative z-10 flex h-full flex-col justify-end p-5">
+        {item.title && <h3 className="text-xl font-black">{item.title}</h3>}
+        {item.body && <p className="mt-1 whitespace-pre-wrap text-sm text-foreground/90" dir="auto">{item.body}</p>}
+      </div>
+    </>
+  );
+
+  return (
+    <section className="relative overflow-hidden rounded-xl border border-border bg-surface advertisement-frame"
+      onTouchStart={event => setTouchY(event.touches[0]?.clientY ?? null)}
+      onTouchEnd={event => {
+        const endY = event.changedTouches[0]?.clientY;
+        if (touchY === null || endY === undefined) return;
+        if (touchY - endY > 35) move(1);
+        if (endY - touchY > 35) move(-1);
+        setTouchY(null);
+      }}>
+      {item.link_url ? <a href={item.link_url} target="_blank" rel="noreferrer" className="absolute inset-0">{content}</a> : <div className="absolute inset-0">{content}</div>}
+      {items.length > 1 && (
+        <div className="absolute left-2 top-1/2 z-20 flex -translate-y-1/2 flex-col gap-1">
+          <button onClick={() => move(-1)} className="rounded-full bg-background/75 p-1.5 backdrop-blur" title="الإعلان السابق"><ChevronUp className="h-4 w-4" /></button>
+          <button onClick={() => move(1)} className="rounded-full bg-background/75 p-1.5 backdrop-blur" title="الإعلان التالي"><ChevronDown className="h-4 w-4" /></button>
+        </div>
+      )}
+      <div className="absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 gap-1">
+        {items.map((_: any, i: number) => <span key={i} className={`h-1 rounded-full transition-all ${i === index ? "w-5 bg-primary" : "w-1.5 bg-foreground/40"}`} />)}
+      </div>
+    </section>
   );
 }
 
@@ -206,13 +315,13 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
       </div>
 
       {marketSignal?.enabled && (
-        <div className={`market-signal glass rounded-2xl px-5 py-4 text-center ${marketSignal.direction === "up" ? "market-signal-up" : "market-signal-down"}`}>
-          <div className="market-signal-icon mx-auto" aria-label={marketSignal.direction === "up" ? "اتجاه مرتفع" : "اتجاه منخفض"}>
-            {marketSignal.direction === "up" ? <TrendingUp className="h-14 w-14" /> : <TrendingDown className="h-14 w-14" />}
-          </div>
-          {marketSignal.text.trim() && <div className="mt-2 whitespace-pre-wrap text-lg font-black" dir="auto">{marketSignal.text}</div>}
+        <div className={`market-signal -mt-2 text-center ${marketSignal.direction === "up" ? "market-signal-up" : "market-signal-down"}`}>
+          <MarketArrow direction={marketSignal.direction} />
+          {marketSignal.text.trim() && <div className="-mt-1 whitespace-pre-wrap text-lg font-black" dir="auto">{marketSignal.text}</div>}
         </div>
       )}
+
+      <HomeAdvertisements />
 
       {/* مستطيل الملف التعريفي */}
       <div className="glass rounded-2xl p-5">
