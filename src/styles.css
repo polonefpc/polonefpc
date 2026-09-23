@@ -130,23 +130,61 @@
     box-shadow: 0 14px 34px -24px color-mix(in oklab, var(--success) 45%, transparent);
   }
   .market-signal {
-    overflow: hidden;
     position: relative;
+    padding-inline: 0.5rem;
   }
   .market-signal-up { color: var(--success); }
   .market-signal-down { color: var(--destructive); }
-  .market-signal-icon {
-    animation: signal-pulse 1.8s ease-in-out infinite;
-    width: fit-content;
-    filter: drop-shadow(0 0 12px currentColor);
+  .market-arrow {
+    display: block;
+    width: min(100%, 32rem);
+    height: 5.75rem;
+    margin-inline: auto;
+    overflow: visible;
+    filter: drop-shadow(0 0 9px currentColor);
+  }
+  .market-arrow-down { transform: scaleY(-1); }
+  .market-arrow-line,
+  .market-arrow-shadow {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .market-arrow-shadow {
+    stroke: currentColor;
+    stroke-width: 11;
+    opacity: 0.12;
+  }
+  .market-arrow-line {
+    stroke: currentColor;
+    stroke-width: 5;
+    stroke-dasharray: 390;
+    stroke-dashoffset: 390;
+    animation: signal-draw 2.2s ease-in-out infinite;
+  }
+  .advertisement-frame {
+    aspect-ratio: 16 / 7;
+    min-height: 10rem;
+    touch-action: pan-x;
+  }
+  .advertisement-overlay {
+    background: linear-gradient(180deg, transparent 18%, color-mix(in oklab, var(--background) 88%, transparent));
+  }
+  .notification-banner { animation: notification-enter .3s ease-out both; }
+  .notification-timer {
+    transform-origin: right;
+    animation: notification-timer 10s linear forwards;
   }
 }
 
-@keyframes signal-pulse {
-  0%, 100% { transform: translateY(2px) scale(0.97); opacity: 0.82; }
-  50% { transform: translateY(-3px) scale(1.04); opacity: 1; }
+@keyframes signal-draw {
+  0% { stroke-dashoffset: 390; opacity: .45; }
+  55%, 100% { stroke-dashoffset: 0; opacity: 1; }
 }
+@keyframes notification-enter { from { opacity: 0; transform: translateY(-120%); } to { opacity: 1; transform: translateY(0); } }
+@keyframes notification-timer { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .market-signal-icon { animation: none; }
+  .market-arrow-line, .notification-banner, .notification-timer { animation: none; }
+  .market-arrow-line { stroke-dashoffset: 0; }
 }

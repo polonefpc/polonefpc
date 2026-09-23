@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronUp, ChevronDown } from "lucide-react";
 import { runDailyYields } from "@/lib/admin.functions";
 import { promoteAgent, revokeAgent, updateAgentBalance } from "@/lib/agent-admin.functions";
 import { BrandLogo } from "@/components/brand-logo";
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: Admin,
 });
 
-type Tab = "deposits" | "withdrawals" | "orders" | "users" | "packages" | "products" | "agents" | "contacts" | "settings" | "help";
+type Tab = "deposits" | "withdrawals" | "orders" | "users" | "packages" | "products" | "agents" | "contacts" | "settings" | "help" | "advertisements" | "notifications";
 const TABS: { id: Tab; label: string }[] = [
   { id: "deposits", label: "طلبات الإيداع" },
   { id: "withdrawals", label: "طلبات السحب" },
@@ -33,6 +33,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "contacts", label: "وكلاء الإيداع" },
   { id: "agents", label: "التجار" },
   { id: "help", label: "أقسام المساعدة" },
+  { id: "advertisements", label: "الإعلانات" },
+  { id: "notifications", label: "الإشعارات" },
   { id: "settings", label: "الإعدادات" },
 ];
 
@@ -78,6 +80,8 @@ function Admin() {
         {tab === "contacts" && <Contacts />}
         {tab === "agents" && <Agents />}
         {tab === "help" && <HelpAdmin />}
+        {tab === "advertisements" && <AdvertisementsAdmin />}
+        {tab === "notifications" && <NotificationsAdmin />}
         
         {tab === "settings" && <Settings />}
       </div>
