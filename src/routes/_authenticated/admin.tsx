@@ -1114,3 +1114,123 @@ function HelpAdmin() {
   );
 }
 
+
+function compressAdImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, 1000 / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = img.width * scale; c.height = img.height * scale;
+      c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", 0.75));
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
+function AdvertisementsAdmin() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [form, setForm] = useState<{ id?: string; title: string; body: string; image_url: string; link_url: string }>({ title: "", body: "", image_url: "", link_url: "" });
+  const db = supabase as any;
+  const load = async () => {
+    const { data } = await db.from("advertisements").select("*").order("sort_order").order("created_at");
+    setRows(data ?? []);
+  };
+  useEffect(() => { load(); }, []);
+  const save = async () => {
+    if (!form.title.trim() && !form.image_url) return toast.error("أضف عنواناً أو صورة");
+    const payload = { title: form.title.trim(), body: form.body.trim(), image_url: form.image_url || null, link_url: form.link_url.trim() || null };
+    const { error } = form.id
+      ? await db.from("advertisements").update(payload).eq("id", form.id)
+      : await db.from("advertisements").insert({ ...payload, sort_order: rows.length, is_active: true });
+    if (error) return toast.error(error.message);
+    toast.success("تم الحفظ");
+    setForm({ title: "", body: "", image_url: "", link_url: "" });
+    load();
+  };
+  const move = async (i: number, d: number) => {
+    const j = i + d; if (j < 0 || j >= rows.length) return;
+    const a = rows[i], b = rows[j];
+    await db.from("advertisements").update({ sort_order: j }).eq("id", a.id);
+    await db.from("advertisements").update({ sort_order: i }).eq("id", b.id);
+    load();
+  };
+  return (
+    <div className="space-y-4">
+      <div className="glass rounded-2xl p-4 space-y-3">
+        <div className="font-bold">{form.id ? "تعديل إعلان" : "إضافة إعلان"}</div>
+        <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="العنوان" className="w-full bg-input rounded-lg px-3 py-2" />
+        <textarea value={form.body} onChange={e => setForm({ ...form, body: e.target.value })} placeholder="نص الإعلان" className="w-full bg-input rounded-lg px-3 py-2 min-h-20" />
+        <input value={form.link_url} onChange={e => setForm({ ...form, link_url: e.target.value })} placeholder="رابط (اختياري)" className="w-full bg-input rounded-lg px-3 py-2" dir="ltr" />
+        <input type="file" accept="image/*" onChange={async e => { const f = e.target.files?.[0]; if (f) setForm({ ...form, image_url: await compressAdImage(f) }); }} />
+        {form.image_url && <div className="flex items-center gap-2"><img src={form.image_url} alt="" className="h-20 rounded-lg" /><button onClick={() => setForm({ ...form, image_url: "" })} className="text-destructive text-sm">إزالة الصورة</button></div>}
+        <div className="flex gap-2">
+          <button onClick={save} className="btn-primary px-4 py-2 rounded-lg font-bold">حفظ</button>
+          {form.id && <button onClick={() => setForm({ title: "", body: "", image_url: "", link_url: "" })} className="glass px-4 py-2 rounded-lg">إلغاء</button>}
+        </div>
+      </div>
+      {rows.map((r, i) => (
+        <div key={r.id} className="glass rounded-2xl p-3 flex items-center gap-3">
+          {r.image_url && <img src={r.image_url} alt="" className="h-14 w-14 object-cover rounded-lg" />}
+          <div className="flex-1 min-w-0"><div className="font-bold truncate">{r.title || "—"}</div><div className="text-xs text-muted-foreground truncate">{r.body}</div></div>
+          <button onClick={() => move(i, -1)} aria-label="للأعلى"><ChevronUp className="w-4 h-4" /></button>
+          <button onClick={() => move(i, 1)} aria-label="للأسفل"><ChevronDown className="w-4 h-4" /></button>
+          <button onClick={async () => { await db.from("advertisements").update({ is_active: !r.is_active }).eq("id", r.id); load(); }} className="text-xs glass px-2 py-1 rounded">{r.is_active ? "إخفاء" : "إظهار"}</button>
+          <button onClick={() => setForm({ id: r.id, title: r.title ?? "", body: r.body ?? "", image_url: r.image_url ?? "", link_url: r.link_url ?? "" })} className="text-xs glass px-2 py-1 rounded">تعديل</button>
+          <button onClick={async () => { if (!confirm("حذف الإعلان؟")) return; await db.from("advertisements").delete().eq("id", r.id); load(); }} className="text-xs bg-destructive/90 px-2 py-1 rounded">حذف</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function NotificationsAdmin() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [message, setMessage] = useState("");
+  const [target, setTarget] = useState("");
+  const [search, setSearch] = useState("");
+  const db = supabase as any;
+  const load = async () => {
+    const { data } = await db.from("notifications").select("*").order("created_at", { ascending: false }).limit(50);
+    setRows(data ?? []);
+  };
+  useEffect(() => {
+    load();
+    db.from("profiles").select("id,full_name,email,referral_code").order("created_at", { ascending: false }).then(({ data }: any) => setUsers(data ?? []));
+  }, []);
+  const filtered = users.filter(u => !search || [u.full_name, u.email, u.referral_code].some((v: string) => v?.toLowerCase().includes(search.toLowerCase()))).slice(0, 30);
+  const name = (id: string) => { const u = users.find(x => x.id === id); return u ? `${u.full_name || u.email} (${u.referral_code})` : id; };
+  const send = async () => {
+    if (!message.trim()) return toast.error("اكتب الإشعار");
+    const { error } = await db.from("notifications").insert({ message: message.trim(), target_user_id: target || null });
+    if (error) return toast.error(error.message);
+    toast.success("تم الإرسال"); setMessage(""); load();
+  };
+  return (
+    <div className="space-y-4">
+      <div className="glass rounded-2xl p-4 space-y-3">
+        <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="نص الإشعار" className="w-full bg-input rounded-lg px-3 py-2 min-h-20" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث عن عميل بالاسم أو المعرّف" className="w-full bg-input rounded-lg px-3 py-2" />
+        <select value={target} onChange={e => setTarget(e.target.value)} className="w-full bg-input rounded-lg px-3 py-2">
+          <option value="">جميع العملاء</option>
+          {filtered.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email} — {u.referral_code}</option>)}
+        </select>
+        <button onClick={send} className="btn-primary px-4 py-2 rounded-lg font-bold">إرسال</button>
+      </div>
+      {rows.map(r => (
+        <div key={r.id} className="glass rounded-2xl p-3 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-sm">{r.message}</div>
+            <div className="text-xs text-muted-foreground">{r.target_user_id ? name(r.target_user_id) : "جميع العملاء"} · {new Date(r.created_at).toLocaleString("ar")}</div>
+          </div>
+          <button onClick={async () => { await db.from("notifications").delete().eq("id", r.id); load(); }} className="text-xs bg-destructive/90 px-2 py-1 rounded">حذف</button>
+        </div>
+      ))}
+    </div>
+  );
+}
