@@ -144,7 +144,7 @@ function ClientNotifications() {
 
 function MarketArrow({ direction }: { direction: "up" | "down" }) {
   return (
-    <svg className={`market-arrow ${direction === "up" ? "market-arrow-up" : "market-arrow-down"}`} viewBox="0 0 320 96" role="img" aria-label={direction === "up" ? "اتجاه مرتفع" : "اتجاه منخفض"}>
+    <svg className={`market-arrow ${direction === "up" ? "market-arrow-up" : "market-arrow-down"}`} viewBox="0 0 320 96" preserveAspectRatio="none" role="img" aria-label={direction === "up" ? "اتجاه مرتفع" : "اتجاه منخفض"}>
       <defs>
         <marker id={`signal-head-${direction}`} markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto" markerUnits="strokeWidth">
           <path d="M0,0 L9,4.5 L0,9 Z" fill="currentColor" />
