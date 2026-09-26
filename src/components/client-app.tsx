@@ -105,7 +105,7 @@ function ClientNotifications() {
     supabase.auth.getUser().then(async ({ data }) => {
       if (!data.user) return;
       const [notices, dismissed] = await Promise.all([
-        (supabase as any).from("notifications").select("id,message,created_at,target_user_id").order("created_at", { ascending: false }).limit(20),
+        (supabase as any).from("notifications").select("id,message,created_at,target_user_id").or(`target_user_id.is.null,target_user_id.eq.${data.user.id}`).order("created_at", { ascending: false }).limit(20),
         (supabase as any).from("notification_dismissals").select("notification_id").eq("user_id", data.user.id),
       ]);
       const hidden = new Set((dismissed.data ?? []).map((row: any) => row.notification_id));

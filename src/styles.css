@@ -137,8 +137,8 @@
   .market-signal-down { color: var(--destructive); }
   .market-arrow {
     display: block;
-    width: min(100%, 32rem);
-    height: 5.75rem;
+    width: min(100%, 22rem);
+    height: 3rem;
     margin-inline: auto;
     overflow: visible;
     filter: drop-shadow(0 0 9px currentColor);
@@ -152,12 +152,12 @@
   }
   .market-arrow-shadow {
     stroke: currentColor;
-    stroke-width: 11;
+    stroke-width: 6;
     opacity: 0.12;
   }
   .market-arrow-line {
     stroke: currentColor;
-    stroke-width: 5;
+    stroke-width: 3;
     stroke-dasharray: 390;
     stroke-dashoffset: 390;
     animation: signal-draw 2.2s ease-in-out infinite;

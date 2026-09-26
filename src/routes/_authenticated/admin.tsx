@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ArrowLeft, ChevronUp, ChevronDown } from "lucide-react";
 import { runDailyYields } from "@/lib/admin.functions";
 import { promoteAgent, revokeAgent, updateAgentBalance } from "@/lib/agent-admin.functions";
+import { AccountsAdmin } from "@/components/accounts-admin";
 import { BrandLogo } from "@/components/brand-logo";
 
 
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: Admin,
 });
 
-type Tab = "deposits" | "withdrawals" | "orders" | "users" | "packages" | "products" | "agents" | "contacts" | "settings" | "help" | "advertisements" | "notifications";
+type Tab = "deposits" | "withdrawals" | "orders" | "users" | "packages" | "products" | "agents" | "contacts" | "settings" | "help" | "advertisements" | "notifications" | "accounts" | "active";
 const TABS: { id: Tab; label: string }[] = [
   { id: "deposits", label: "طلبات الإيداع" },
   { id: "withdrawals", label: "طلبات السحب" },
@@ -35,6 +36,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "help", label: "أقسام المساعدة" },
   { id: "advertisements", label: "الإعلانات" },
   { id: "notifications", label: "الإشعارات" },
+  { id: "accounts", label: "الحسابات" },
+  { id: "active", label: "الحسابات المفعلة" },
   { id: "settings", label: "الإعدادات" },
 ];
 
@@ -82,6 +85,8 @@ function Admin() {
         {tab === "help" && <HelpAdmin />}
         {tab === "advertisements" && <AdvertisementsAdmin />}
         {tab === "notifications" && <NotificationsAdmin />}
+        {tab === "accounts" && <AccountsAdmin />}
+        {tab === "active" && <AccountsAdmin onlyActive />}
         
         {tab === "settings" && <Settings />}
       </div>
