@@ -43,6 +43,7 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
         local: (values.tab_local_visible ?? "true") === "true",
         shop: (values.tab_shop_visible ?? "true") === "true",
         referral: (values.tab_referral_visible ?? "true") === "true",
+        notifications: true,
       };
       setVisibleTabs(next);
       setTab(current => next[current] ? current : "home");
