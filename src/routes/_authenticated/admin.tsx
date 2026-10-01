@@ -731,6 +731,8 @@ function Settings() {
   const [signalEnabled, setSignalEnabled] = useState(false);
   const [signalDirection, setSignalDirection] = useState<"up" | "down">("up");
   const [signalText, setSignalText] = useState("");
+  const [signalValue, setSignalValue] = useState("");
+  const [signalHistory, setSignalHistory] = useState<any[]>([]);
   const [tabVisibility, setTabVisibility] = useState({ deposit: true, withdraw: true, local: true, shop: true, referral: true });
   const loadWallets = () => supabase.from("deposit_wallets").select("*").order("sort_order").then(({data})=>setWallets(data ?? []));
   useEffect(()=>{
