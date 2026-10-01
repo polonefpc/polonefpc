@@ -322,7 +322,7 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
 
   // ─── تحدي الإحالة (قابل للتحكم من لوحة الأدمن) ───
   const [offer, setOffer] = useState<{ enabled: boolean; goal: number; reward: number; title: string } | null>(null);
-  const [marketSignal, setMarketSignal] = useState<{ enabled: boolean; direction: "up" | "down"; text: string } | null>(null);
+  const [marketSignal, setMarketSignal] = useState<{ enabled: boolean; direction: "up" | "down"; text: string; value: string; history: SignalPoint[] } | null>(null);
   const GOAL = offer?.goal ?? 10;
   const REWARD = offer?.reward ?? 94;
   const refCount = Math.max(Number(profile?.referral_count ?? 0), refs?.length ?? 0);
@@ -334,7 +334,7 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
 
   useEffect(() => {
     supabase.from("settings").select("key,value")
-      .in("key", ["referral_offer_enabled", "referral_offer_goal", "referral_offer_reward", "referral_offer_title", "market_signal_enabled", "market_signal_direction", "market_signal_text"])
+      .in("key", ["referral_offer_enabled", "referral_offer_goal", "referral_offer_reward", "referral_offer_title", "market_signal_enabled", "market_signal_direction", "market_signal_text", "market_signal_value", "market_signal_history"])
       .then(({ data }) => {
         const m = Object.fromEntries((data ?? []).map((r: any) => [r.key, r.value]));
         setOffer({
@@ -392,7 +392,7 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
 
       {marketSignal?.enabled && (
         <div className={`market-signal -mt-2 text-center ${marketSignal.direction === "up" ? "market-signal-up" : "market-signal-down"}`}>
-          <MarketArrow direction={marketSignal.direction} />
+          <MarketArrow direction={marketSignal.direction} history={marketSignal.history} value={marketSignal.value} />
           {marketSignal.text.trim() && <div className="-mt-1 whitespace-pre-wrap text-lg font-black" dir="auto">{marketSignal.text}</div>}
         </div>
       )}
