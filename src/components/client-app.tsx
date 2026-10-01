@@ -347,6 +347,8 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
           enabled: (m.market_signal_enabled ?? "false") === "true",
           direction: m.market_signal_direction === "down" ? "down" : "up",
           text: m.market_signal_text ?? "",
+          value: m.market_signal_value ?? "",
+          history: (() => { try { return JSON.parse(m.market_signal_history ?? "[]"); } catch { return []; } })(),
         });
       });
   }, []);
