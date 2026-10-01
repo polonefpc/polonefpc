@@ -11,7 +11,7 @@ import { HelpButton } from "@/components/help-button";
 import { SupportButton } from "@/components/support-button";
 import { BrandLogo } from "@/components/brand-logo";
 
-type Tab = "home" | "deposit" | "withdraw" | "local" | "shop" | "referral";
+type Tab = "home" | "deposit" | "withdraw" | "local" | "shop" | "referral" | "notifications";
 
 const TABS: { id: Tab; label: string; icon: typeof Home }[] = [
   { id: "home", label: "الرئيسية", icon: Home },
@@ -20,12 +20,14 @@ const TABS: { id: Tab; label: string; icon: typeof Home }[] = [
   { id: "local", label: "إيداع محلي", icon: MapPin },
   { id: "shop", label: "الباقات", icon: Package },
   { id: "referral", label: "إحالة", icon: Share2 },
+  { id: "notifications", label: "الإشعارات", icon: Bell },
 ];
 
 export function ClientShell({ children, userEmail, roles }: { children: (tab: Tab) => React.ReactNode; userEmail: string; roles: Role[] }) {
   const [tab, setTab] = useState<Tab>("home");
+  const [unread, setUnread] = useState(0);
   const [visibleTabs, setVisibleTabs] = useState<Record<Tab, boolean>>({
-    home: true, deposit: true, withdraw: true, local: true, shop: true, referral: true,
+    home: true, deposit: true, withdraw: true, local: true, shop: true, referral: true, notifications: true,
   });
   const nav = useNavigate();
 
@@ -41,9 +43,18 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
         local: (values.tab_local_visible ?? "true") === "true",
         shop: (values.tab_shop_visible ?? "true") === "true",
         referral: (values.tab_referral_visible ?? "true") === "true",
+        notifications: true,
       };
       setVisibleTabs(next);
       setTab(current => next[current] ? current : "home");
+    });
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      const { data: rows } = await (supabase as any).from("notifications").select("id").or(`target_user_id.is.null,target_user_id.eq.${data.user.id}`).limit(200);
+      let read: string[] = [];
+      try { read = JSON.parse(localStorage.getItem(`notif_read_${data.user.id}`) ?? "[]"); } catch { read = []; }
+      const seen = new Set(read);
+      setUnread((rows ?? []).filter((r: any) => !seen.has(r.id)).length);
     });
   }, []);
 
@@ -78,7 +89,7 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
 
       <ClientNotifications />
 
-      <main className="max-w-2xl mx-auto px-4 py-4">{children(tab)}</main>
+      <main className="max-w-2xl mx-auto px-4 py-4">{tab === "notifications" ? <NotificationsTab onRead={() => setUnread(0)} /> : children(tab)}</main>
 
       <nav className="fixed bottom-3 left-3 right-3 max-w-2xl mx-auto glass rounded-2xl p-2 flex justify-around z-30">
         {TABS.filter(t => visibleTabs[t.id]).map(t => {
@@ -86,9 +97,12 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
           const active = tab === t.id;
           return (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl transition ${active ? "btn-primary" : "text-muted-foreground"}`}>
+              className={`relative flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl transition ${active ? "btn-primary" : "text-muted-foreground"}`}>
               <Icon className="w-4 h-4" />
               <span className="text-[10px] font-bold">{t.label}</span>
+              {t.id === "notifications" && unread > 0 && (
+                <span className="absolute -top-1 right-0 min-w-4 h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-black leading-4">{unread > 99 ? "99+" : unread}</span>
+              )}
             </button>
           );
         })}
@@ -142,17 +156,79 @@ function ClientNotifications() {
   );
 }
 
-function MarketArrow({ direction }: { direction: "up" | "down" }) {
+type SignalPoint = { d: string; dir: "up" | "down"; v: number | null };
+
+function MarketArrow({ direction, history, value }: { direction: "up" | "down"; history: SignalPoint[]; value: string }) {
+  // build up to 7 days; each day contributes intraday wiggles then ends in its direction
+  const days: SignalPoint[] = history.length ? history.slice(-7) : [{ d: "", dir: direction, v: null }];
+  const ys: number[] = [0];
+  let level = 0;
+  days.forEach((day, i) => {
+    const step = day.v != null && i > 0 && days[i - 1].v != null ? Math.sign(day.v - (days[i - 1].v as number)) || (day.dir === "up" ? 1 : -1) : (day.dir === "up" ? 1 : -1);
+    const s = day.dir === "up" ? Math.abs(step) : -Math.abs(step);
+    ys.push(level - s * 0.4, level + s * 0.6, level + s * 0.3);
+    level += s;
+    ys.push(level);
+  });
+  const min = Math.min(...ys), max = Math.max(...ys);
+  const W = 340, H = 110, pad = 14;
+  const pts = ys.map((y, i) => [pad + (i / (ys.length - 1)) * (W - pad * 2), H - pad - ((y - min) / (max - min || 1)) * (H - pad * 2)]);
+  const d = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
+  const area = `${d} L${pts[pts.length - 1][0]} ${H} L${pts[0][0]} ${H} Z`;
+  const last = pts[pts.length - 1];
+  const id = `sig-${direction}`;
   return (
-    <svg className={`market-arrow ${direction === "up" ? "market-arrow-up" : "market-arrow-down"}`} viewBox="0 0 320 96" preserveAspectRatio="none" role="img" aria-label={direction === "up" ? "اتجاه مرتفع" : "اتجاه منخفض"}>
-      <defs>
-        <marker id={`signal-head-${direction}`} markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto" markerUnits="strokeWidth">
-          <path d="M0,0 L9,4.5 L0,9 Z" fill="currentColor" />
-        </marker>
-      </defs>
-      <path className="market-arrow-shadow" d="M14 78 L69 53 L116 67 L169 31 L224 45 L295 12" />
-      <path className="market-arrow-line" d="M14 78 L69 53 L116 67 L169 31 L224 45 L295 12" markerEnd={`url(#signal-head-${direction})`} />
-    </svg>
+    <div className="market-chart">
+      <svg className="market-arrow" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={direction === "up" ? "اتجاه مرتفع" : "اتجاه منخفض"}>
+        <defs>
+          <linearGradient id={`${id}-fill`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="currentColor" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+          </linearGradient>
+          <marker id={`${id}-head`} markerWidth="8" markerHeight="8" refX="5" refY="4" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L8,4 L0,8 Z" fill="currentColor" />
+          </marker>
+        </defs>
+        {[0.25, 0.5, 0.75].map(f => <line key={f} x1="0" x2={W} y1={H * f} y2={H * f} className="market-grid" />)}
+        <path d={area} fill={`url(#${id}-fill)`} />
+        <path className="market-arrow-line" d={d} markerEnd={`url(#${id}-head)`} />
+        <g className="market-dot" style={{ transformOrigin: `${last[0]}px ${last[1]}px` }}>
+          <circle cx={last[0]} cy={last[1]} r="9" fill="currentColor" opacity="0.25" />
+          <circle cx={last[0]} cy={last[1]} r="4" fill="currentColor" />
+        </g>
+        {value && <text x={Math.min(last[0], W - 40)} y={Math.max(last[1] - 14, 12)} textAnchor="middle" className="market-value" fill="currentColor">{value}</text>}
+      </svg>
+      {history.length > 1 && (
+        <div className="flex justify-between px-2 text-[10px] font-bold opacity-80">
+          {days.map(day => <span key={day.d} className={day.dir === "up" ? "text-success" : "text-destructive"}>{day.dir === "up" ? "▲" : "▼"} {day.d.slice(5)}</span>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NotificationsTab({ onRead }: { onRead: () => void }) {
+  const [items, setItems] = useState<any[]>([]);
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      const { data: rows } = await (supabase as any).from("notifications").select("id,message,created_at").or(`target_user_id.is.null,target_user_id.eq.${data.user.id}`).order("created_at", { ascending: false }).limit(100);
+      setItems(rows ?? []);
+      localStorage.setItem(`notif_read_${data.user.id}`, JSON.stringify((rows ?? []).map((r: any) => r.id)));
+      onRead();
+    });
+  }, []);
+  return (
+    <div className="space-y-3">
+      <h2 className="text-lg font-black flex items-center gap-2"><Bell className="h-5 w-5 text-primary" /> الإشعارات</h2>
+      {items.length === 0 && <div className="glass rounded-xl p-4 text-center text-sm text-muted-foreground">لا توجد إشعارات</div>}
+      {items.map(n => (
+        <div key={n.id} className="glass rounded-xl p-3">
+          <p className="whitespace-pre-wrap text-sm font-bold" dir="auto">{n.message}</p>
+          <div className="mt-1 text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleString("ar")}</div>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -246,7 +322,7 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
 
   // ─── تحدي الإحالة (قابل للتحكم من لوحة الأدمن) ───
   const [offer, setOffer] = useState<{ enabled: boolean; goal: number; reward: number; title: string } | null>(null);
-  const [marketSignal, setMarketSignal] = useState<{ enabled: boolean; direction: "up" | "down"; text: string } | null>(null);
+  const [marketSignal, setMarketSignal] = useState<{ enabled: boolean; direction: "up" | "down"; text: string; value: string; history: SignalPoint[] } | null>(null);
   const GOAL = offer?.goal ?? 10;
   const REWARD = offer?.reward ?? 94;
   const refCount = Math.max(Number(profile?.referral_count ?? 0), refs?.length ?? 0);
@@ -258,7 +334,7 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
 
   useEffect(() => {
     supabase.from("settings").select("key,value")
-      .in("key", ["referral_offer_enabled", "referral_offer_goal", "referral_offer_reward", "referral_offer_title", "market_signal_enabled", "market_signal_direction", "market_signal_text"])
+      .in("key", ["referral_offer_enabled", "referral_offer_goal", "referral_offer_reward", "referral_offer_title", "market_signal_enabled", "market_signal_direction", "market_signal_text", "market_signal_value", "market_signal_history"])
       .then(({ data }) => {
         const m = Object.fromEntries((data ?? []).map((r: any) => [r.key, r.value]));
         setOffer({
@@ -271,6 +347,8 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
           enabled: (m.market_signal_enabled ?? "false") === "true",
           direction: m.market_signal_direction === "down" ? "down" : "up",
           text: m.market_signal_text ?? "",
+          value: m.market_signal_value ?? "",
+          history: (() => { try { return JSON.parse(m.market_signal_history ?? "[]"); } catch { return []; } })(),
         });
       });
   }, []);
@@ -316,7 +394,7 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
 
       {marketSignal?.enabled && (
         <div className={`market-signal -mt-2 text-center ${marketSignal.direction === "up" ? "market-signal-up" : "market-signal-down"}`}>
-          <MarketArrow direction={marketSignal.direction} />
+          <MarketArrow direction={marketSignal.direction} history={marketSignal.history} value={marketSignal.value} />
           {marketSignal.text.trim() && <div className="-mt-1 whitespace-pre-wrap text-lg font-black" dir="auto">{marketSignal.text}</div>}
         </div>
       )}

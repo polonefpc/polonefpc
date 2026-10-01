@@ -28,7 +28,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({ error, reset }: { error: unknown; reset: () => void }) {
   const router = useRouter();
   useEffect(() => { reportLovableError(error, { boundary: "root" }); }, [error]);
   return (
@@ -36,7 +36,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
       <div className="max-w-md text-center glass rounded-3xl p-10">
         <BrandLogo className="mx-auto h-16 w-16" showName={false} />
         <h1 className="text-xl font-bold">حدث خطأ غير متوقع</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{(error as Error)?.message}</p>
         <button onClick={() => { router.invalidate(); reset(); }} className="mt-6 btn-primary px-6 py-3 rounded-xl font-semibold">إعادة المحاولة</button>
       </div>
     </div>

@@ -51,6 +51,13 @@ export function AccountsAdmin({ onlyActive = false }: { onlyActive?: boolean }) 
     catch (e: any) { toast.error(e.message); }
   };
 
+  const notify = async (id: string) => {
+    const message = prompt("اكتب نص الإشعار لهذا الحساب")?.trim();
+    if (!message) return;
+    const { error } = await (supabase as any).from("notifications").insert({ target_user_id: id, message });
+    if (error) toast.error(error.message); else toast.success("تم إرسال الإشعار");
+  };
+
   const shown = rows
     .filter(r => !onlyActive || r.is_active)
     .filter(r => !q || [r.full_name, r.email, r.referral_code].some((v: string) => v?.toLowerCase().includes(q.toLowerCase())));
@@ -83,7 +90,10 @@ export function AccountsAdmin({ onlyActive = false }: { onlyActive?: boolean }) 
             <div>آخر ربح يومي: {fmt(r.last_yield)}</div>
             <div>آخر حركة: {fmt(r.last_activity)}</div>
           </div>
+          <div className="flex gap-2">
+            <button onClick={() => notify(r.id)} className="text-xs btn-primary px-2 py-1 rounded">إرسال إشعار</button>
           <button onClick={() => remove(r.id)} className="text-xs bg-destructive/90 text-destructive-foreground px-2 py-1 rounded">حذف الحساب</button>
+          </div>
         </div>
       ))}
     </div>

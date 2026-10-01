@@ -731,6 +731,8 @@ function Settings() {
   const [signalEnabled, setSignalEnabled] = useState(false);
   const [signalDirection, setSignalDirection] = useState<"up" | "down">("up");
   const [signalText, setSignalText] = useState("");
+  const [signalValue, setSignalValue] = useState("");
+  const [signalHistory, setSignalHistory] = useState<any[]>([]);
   const [tabVisibility, setTabVisibility] = useState({ deposit: true, withdraw: true, local: true, shop: true, referral: true });
   const loadWallets = () => supabase.from("deposit_wallets").select("*").order("sort_order").then(({data})=>setWallets(data ?? []));
   useEffect(()=>{
@@ -738,7 +740,7 @@ function Settings() {
     supabase.from("settings").select("*").eq("key","withdraw_description").maybeSingle().then(({data})=>setWithdrawDesc(data?.value ?? ""));
     supabase.from("settings").select("*").eq("key","support_url").maybeSingle().then(({data})=>setSupportUrl(data?.value ?? ""));
     supabase.from("settings").select("*").eq("key","support_enabled").maybeSingle().then(({data})=>setSupportEnabled((data?.value ?? "false") === "true"));
-    supabase.from("settings").select("key,value").in("key",["welcome_bonus_enabled","welcome_bonus_amount","referral_offer_enabled","referral_offer_goal","referral_offer_reward","referral_offer_title","market_signal_enabled","market_signal_direction","market_signal_text","tab_deposit_visible","tab_withdraw_visible","tab_local_visible","tab_shop_visible","tab_referral_visible"]).then(({data})=>{
+    supabase.from("settings").select("key,value").in("key",["welcome_bonus_enabled","welcome_bonus_amount","referral_offer_enabled","referral_offer_goal","referral_offer_reward","referral_offer_title","market_signal_enabled","market_signal_direction","market_signal_text","market_signal_value","market_signal_history","tab_deposit_visible","tab_withdraw_visible","tab_local_visible","tab_shop_visible","tab_referral_visible"]).then(({data})=>{
       const m = Object.fromEntries((data ?? []).map((r:any)=>[r.key, r.value]));
       setBonusEnabled((m.welcome_bonus_enabled ?? "true") === "true");
       setBonusAmount(m.welcome_bonus_amount ?? "25");
@@ -749,6 +751,8 @@ function Settings() {
       setSignalEnabled((m.market_signal_enabled ?? "false") === "true");
       setSignalDirection(m.market_signal_direction === "down" ? "down" : "up");
       setSignalText(m.market_signal_text ?? "");
+      setSignalValue(m.market_signal_value ?? "");
+      try { setSignalHistory(JSON.parse(m.market_signal_history ?? "[]")); } catch { setSignalHistory([]); }
       setTabVisibility({
         deposit: (m.tab_deposit_visible ?? "true") === "true",
         withdraw: (m.tab_withdraw_visible ?? "true") === "true",
@@ -781,10 +785,17 @@ function Settings() {
     toast.success("تم حفظ إعدادات العرض");
   };
   const saveSignal = async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const num = signalValue.trim() === "" ? null : Number(signalValue);
+    const nextHistory = [...signalHistory.filter((h:any) => h.d !== today), { d: today, dir: signalDirection, v: Number.isFinite(num as number) ? num : null }]
+      .sort((a:any,b:any)=>a.d.localeCompare(b.d)).slice(-7);
+    setSignalHistory(nextHistory);
     const { error } = await supabase.from("settings").upsert([
       { key:"market_signal_enabled", value: signalEnabled ? "true" : "false", updated_at: new Date().toISOString() },
       { key:"market_signal_direction", value: signalDirection, updated_at: new Date().toISOString() },
       { key:"market_signal_text", value: signalText.trim(), updated_at: new Date().toISOString() },
+      { key:"market_signal_value", value: signalValue.trim(), updated_at: new Date().toISOString() },
+      { key:"market_signal_history", value: JSON.stringify(nextHistory), updated_at: new Date().toISOString() },
     ]);
     if (error) return toast.error(error.message);
     toast.success("تم تحديث مؤشر الاتجاه");
@@ -945,6 +956,16 @@ function Settings() {
           <button onClick={()=>setSignalDirection("down")} className={`rounded-lg border px-3 py-2 font-bold ${signalDirection === "down" ? "bg-destructive/20 text-destructive border-destructive" : "bg-input border-border"}`}>↓ منخفض</button>
         </div>
         <textarea rows={3} dir="auto" className="w-full bg-input border border-border rounded px-3 py-2" placeholder="اكتب الأرقام والحروف التي تظهر تحت السهم" value={signalText} onChange={e=>setSignalText(e.target.value)} />
+        <input type="number" step="any" className="w-full bg-input border border-border rounded px-3 py-2" placeholder="رقم السعر الحالي (يتحرك السهم حسبه)" value={signalValue} onChange={e=>setSignalValue(e.target.value)} />
+        <p className="text-xs text-muted-foreground">كل حفظ يُسجَّل كحركة اليوم، ويعرض السهم آخر 7 أيام.</p>
+        {signalHistory.length > 0 && (
+          <div className="flex flex-wrap gap-1 text-xs">
+            {signalHistory.map((h:any)=>(
+              <span key={h.d} className={`rounded px-2 py-0.5 ${h.dir === "up" ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}>{h.d.slice(5)} {h.dir === "up" ? "↑" : "↓"} {h.v ?? ""}</span>
+            ))}
+            <button onClick={async()=>{ setSignalHistory([]); await supabase.from("settings").upsert({ key:"market_signal_history", value:"[]" }); toast.success("تم مسح السجل"); }} className="rounded px-2 py-0.5 bg-secondary">مسح السجل</button>
+          </div>
+        )}
         <button onClick={saveSignal} className="btn-primary rounded px-4 py-2 font-bold">حفظ المؤشر</button>
       </div>
 
