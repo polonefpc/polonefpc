@@ -24,9 +24,16 @@ function Login() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword(form);
+    const creds = { email: form.email.trim().toLowerCase(), password: form.password };
+    let { error } = await supabase.auth.signInWithPassword(creds);
+    if (error && (error.status === 0 || /fetch|network/i.test(error.message))) {
+      ({ error } = await supabase.auth.signInWithPassword(creds));
+    }
     setLoading(false);
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(/invalid login/i.test(error.message) ? "البريد أو كلمة المرور غير صحيحة" : /network|fetch/i.test(error.message) ? "تعذر الاتصال، حاول مرة أخرى" : error.message);
+      return;
+    }
     toast.success("مرحباً بعودتك");
     const dest = safeNext(next);
     if (dest) { window.location.href = dest; return; }
