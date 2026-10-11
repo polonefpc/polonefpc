@@ -585,6 +585,36 @@ export type Database = {
           },
         ]
       }
+      publication_tasks: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          is_active: boolean
+          reward: number
+          share_url: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          reward?: number
+          share_url: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          is_active?: boolean
+          reward?: number
+          share_url?: string
+          title?: string
+        }
+        Relationships: []
+      }
       referral_milestone_claims: {
         Row: {
           amount: number
@@ -620,6 +650,60 @@ export type Database = {
           value?: string
         }
         Relationships: []
+      }
+      task_submissions: {
+        Row: {
+          admin_note: string
+          created_at: string
+          id: string
+          links: string[]
+          processed_at: string | null
+          proof_image: string
+          reward: number
+          status: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string
+          created_at?: string
+          id?: string
+          links: string[]
+          processed_at?: string | null
+          proof_image: string
+          reward: number
+          status?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string
+          created_at?: string
+          id?: string
+          links?: string[]
+          processed_at?: string | null
+          proof_image?: string
+          reward?: number
+          status?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_submissions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "publication_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_submissions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       transfers: {
         Row: {
@@ -662,6 +746,132 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      wheel_assignments: {
+        Row: {
+          prize_id: string
+          round_id: string
+          user_id: string
+        }
+        Insert: {
+          prize_id: string
+          round_id: string
+          user_id: string
+        }
+        Update: {
+          prize_id?: string
+          round_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wheel_assignments_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "wheel_rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wheel_assignments_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wheel_prizes: {
+        Row: {
+          amount: number
+          id: string
+          is_active: boolean
+          label: string
+          sort_order: number
+          weight: number
+        }
+        Insert: {
+          amount?: number
+          id?: string
+          is_active?: boolean
+          label: string
+          sort_order?: number
+          weight?: number
+        }
+        Update: {
+          amount?: number
+          id?: string
+          is_active?: boolean
+          label?: string
+          sort_order?: number
+          weight?: number
+        }
+        Relationships: []
+      }
+      wheel_rounds: {
+        Row: {
+          created_at: string
+          id: string
+          is_open: boolean
+          prizes: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          prizes: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          prizes?: Json
+        }
+        Relationships: []
+      }
+      wheel_spins: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          label: string
+          prize_id: string
+          round_id: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          label: string
+          prize_id: string
+          round_id: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          label?: string
+          prize_id?: string
+          round_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wheel_spins_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "wheel_rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wheel_spins_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       withdrawals: {
         Row: {
@@ -716,6 +926,10 @@ export type Database = {
         Args: { _request_id: string }
         Returns: undefined
       }
+      assign_wheel_prize: {
+        Args: { _prize_id: string; _round_id: string; _user_id: string }
+        Returns: undefined
+      }
       claim_referral_milestone: {
         Args: never
         Returns: {
@@ -732,6 +946,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      open_wheel_round: { Args: never; Returns: string }
       process_transfer_points: {
         Args: { _amount: number; _from_user: string; _to_code: string }
         Returns: undefined
@@ -747,6 +962,15 @@ export type Database = {
       request_package_purchase: {
         Args: { _package_id: number; _user_id: string }
         Returns: undefined
+      }
+      review_publication_task: {
+        Args: { _approve: boolean; _note?: string; _submission_id: string }
+        Returns: undefined
+      }
+      spin_reward_wheel: { Args: { _round_id: string }; Returns: Json }
+      submit_publication_task: {
+        Args: { _links: string[]; _proof_image: string; _task_id: string }
+        Returns: string
       }
     }
     Enums: {
