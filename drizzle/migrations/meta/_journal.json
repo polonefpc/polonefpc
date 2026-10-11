@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791684450652,
+      "tag": "0000_wheel_rounds_and_publication_tasks",
+      "breakpoints": true
+    }
+  ]
+}
