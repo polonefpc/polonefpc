@@ -8,6 +8,7 @@ import { ArrowLeft, ChevronUp, ChevronDown } from "lucide-react";
 import { runDailyYields } from "@/lib/admin.functions";
 import { promoteAgent, revokeAgent, updateAgentBalance } from "@/lib/agent-admin.functions";
 import { AccountsAdmin } from "@/components/accounts-admin";
+import { RewardsAdmin, WithdrawFeeAdmin } from "@/components/rewards-admin";
 import { BrandLogo } from "@/components/brand-logo";
 
 
@@ -23,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: Admin,
 });
 
-type Tab = "deposits" | "withdrawals" | "orders" | "users" | "packages" | "products" | "agents" | "contacts" | "settings" | "help" | "advertisements" | "notifications" | "accounts" | "active";
+type Tab = "deposits" | "withdrawals" | "orders" | "users" | "packages" | "products" | "agents" | "contacts" | "settings" | "help" | "advertisements" | "notifications" | "accounts" | "active" | "rewards" | "withdrawFee";
 const TABS: { id: Tab; label: string }[] = [
   { id: "deposits", label: "طلبات الإيداع" },
   { id: "withdrawals", label: "طلبات السحب" },
@@ -38,6 +39,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "notifications", label: "الإشعارات" },
   { id: "accounts", label: "الحسابات" },
   { id: "active", label: "الحسابات المفعلة" },
+  { id: "rewards", label: "العجلة والمهام" },
+  { id: "withdrawFee", label: "رسوم السحب" },
   { id: "settings", label: "الإعدادات" },
 ];
 
@@ -88,6 +91,8 @@ function Admin() {
         {tab === "accounts" && <AccountsAdmin />}
         {tab === "active" && <AccountsAdmin onlyActive />}
         
+        {tab === "rewards" && <RewardsAdmin />}
+        {tab === "withdrawFee" && <WithdrawFeeAdmin />}
         {tab === "settings" && <Settings />}
       </div>
     </div>

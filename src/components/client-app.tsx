@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, Package, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, Wallet, AlertTriangle, Info, ChevronUp, ChevronDown, X, Bell } from "lucide-react";
+import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, Package, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, Wallet, AlertTriangle, Info, ChevronUp, ChevronDown, X, Bell, Gift } from "lucide-react";
 import { toast } from "sonner";
 import type { Role } from "@/lib/auth";
 import { requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
@@ -10,8 +10,9 @@ import { LanguageSwitch } from "@/components/language-switch";
 import { HelpButton } from "@/components/help-button";
 import { SupportButton } from "@/components/support-button";
 import { BrandLogo } from "@/components/brand-logo";
+import { RewardsClient } from "@/components/rewards-client";
 
-type Tab = "home" | "deposit" | "withdraw" | "local" | "shop" | "referral" | "notifications";
+type Tab = "home" | "deposit" | "withdraw" | "local" | "shop" | "referral" | "notifications" | "rewards";
 
 const TABS: { id: Tab; label: string; icon: typeof Home }[] = [
   { id: "home", label: "الرئيسية", icon: Home },
@@ -20,6 +21,7 @@ const TABS: { id: Tab; label: string; icon: typeof Home }[] = [
   { id: "local", label: "إيداع محلي", icon: MapPin },
   { id: "shop", label: "الباقات", icon: Package },
   { id: "referral", label: "إحالة", icon: Share2 },
+  { id: "rewards", label: "مكافآت", icon: Gift },
   { id: "notifications", label: "الإشعارات", icon: Bell },
 ];
 
@@ -27,7 +29,7 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
   const [tab, setTab] = useState<Tab>("home");
   const [unread, setUnread] = useState(0);
   const [visibleTabs, setVisibleTabs] = useState<Record<Tab, boolean>>({
-    home: true, deposit: true, withdraw: true, local: true, shop: true, referral: true, notifications: true,
+    home: true, deposit: true, withdraw: true, local: true, shop: true, referral: true, notifications: true, rewards: true,
   });
   const nav = useNavigate();
 
@@ -44,6 +46,7 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
         shop: (values.tab_shop_visible ?? "true") === "true",
         referral: (values.tab_referral_visible ?? "true") === "true",
         notifications: true,
+        rewards: true,
       };
       setVisibleTabs(next);
       setTab(current => next[current] ? current : "home");
@@ -89,7 +92,7 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
 
       <ClientNotifications />
 
-      <main className="max-w-2xl mx-auto px-4 py-4">{tab === "notifications" ? <NotificationsTab onRead={() => setUnread(0)} /> : children(tab)}</main>
+      <main className="max-w-2xl mx-auto px-4 py-4">{tab === "notifications" ? <NotificationsTab onRead={() => setUnread(0)} /> : tab === "rewards" ? <RewardsTab /> : children(tab)}</main>
 
       <nav className="fixed bottom-3 left-3 right-3 max-w-2xl mx-auto glass rounded-2xl p-2 flex justify-around z-30">
         {TABS.filter(t => visibleTabs[t.id]).map(t => {
@@ -107,6 +110,19 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
           );
         })}
       </nav>
+    </div>
+  );
+}
+
+function RewardsTab() {
+  const [mode, setMode] = useState<"wheel" | "tasks">("wheel");
+  return (
+    <div className="space-y-4">
+      <div className="glass rounded-2xl p-2 flex">
+        <button onClick={() => setMode("wheel")} className={`flex-1 py-2.5 rounded-xl font-bold text-sm ${mode === "wheel" ? "btn-primary" : "text-muted-foreground"}`}>عجلة الربح</button>
+        <button onClick={() => setMode("tasks")} className={`flex-1 py-2.5 rounded-xl font-bold text-sm ${mode === "tasks" ? "btn-primary" : "text-muted-foreground"}`}>المهام</button>
+      </div>
+      <RewardsClient key={mode} mode={mode} />
     </div>
   );
 }
@@ -636,6 +652,8 @@ export function WithdrawTab({ profile, reload }: any) {
   const [withdrawDesc, setWithdrawDesc] = useState("");
   const [showWithdrawDesc, setShowWithdrawDesc] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fee, setFee] = useState({ percent: 0, wallet: "", notice: "" });
+  const [confirming, setConfirming] = useState(false);
   const transferPointsFn = useServerFn(transferPoints);
   const active = !!profile?.is_active;
   const withdrawInfo = withdrawDesc || "السحب يتم فقط إلى محفظة Tron / TRC20. تأكد من كتابة عنوان المحفظة الصحيح قبل إرسال الطلب، والحد الأدنى للسحب 49$.";
@@ -643,7 +661,13 @@ export function WithdrawTab({ profile, reload }: any) {
   useEffect(() => {
     supabase.from("settings").select("value").eq("key", "withdraw_description").maybeSingle()
       .then(({ data }) => setWithdrawDesc(data?.value ?? ""));
+    supabase.from("settings").select("key,value").in("key", ["withdraw_fee_percent", "withdraw_fee_wallet", "withdraw_fee_notice"])
+      .then(({ data }) => {
+        const m = Object.fromEntries((data ?? []).map(r => [r.key, r.value]));
+        setFee({ percent: Math.max(0, Number(m.withdraw_fee_percent ?? 0) || 0), wallet: m.withdraw_fee_wallet ?? "", notice: m.withdraw_fee_notice ?? "" });
+      });
   }, []);
+  const feeAmount = Math.round(Number(amt || 0) * fee.percent) / 100;
 
   const submitWithdraw = async () => {
     if (!active) { toast.error("حسابك غير مفعّل — لا يمكن السحب"); return; }
@@ -651,6 +675,8 @@ export function WithdrawTab({ profile, reload }: any) {
     if (!a || a < 49) { toast.error("الحد الأدنى للسحب 49$"); return; }
     if (!wallet.trim()) { toast.error("أدخل عنوان المحفظة"); return; }
     if (a > Number(profile?.balance ?? 0)) { toast.error("رصيد غير كافٍ"); return; }
+    if (fee.percent > 0 && !confirming) { setConfirming(true); return; }
+    setConfirming(false);
     setLoading(true);
     const { data: u } = await supabase.auth.getUser();
     const { error } = await supabase.from("withdrawals").insert({ user_id: u.user!.id, wallet_address: wallet, amount: a });
@@ -711,9 +737,36 @@ export function WithdrawTab({ profile, reload }: any) {
               placeholder="رمز المستلم (5 أرقام)" value={toCode} onChange={e=>setToCode(e.target.value.replace(/\D/g,""))} />
           )}
           <input type="number" step="0.01" min={mode==="withdraw"?49:0.01} className="w-full bg-input border border-border rounded-xl px-4 py-3"
-            placeholder={mode==="withdraw" ? "المبلغ (الحد الأدنى 49$)" : "المبلغ"} value={amt} onChange={e=>setAmt(e.target.value)} />
-          <button disabled={loading || !active} onClick={mode==="withdraw"?submitWithdraw:submitTransfer}
-            className="btn-primary w-full rounded-xl py-3 font-bold">{loading?"...":mode==="withdraw"?"طلب السحب":"تحويل النقاط"}</button>
+            placeholder={mode==="withdraw" ? "المبلغ (الحد الأدنى 49$)" : "المبلغ"} value={amt} onChange={e=>{ setAmt(e.target.value); setConfirming(false); }} />
+          {mode === "withdraw" && fee.percent > 0 && Number(amt) > 0 && !confirming && (
+            <div className="text-xs text-muted-foreground">رسوم السحب {fee.percent}% = <b className="text-reward-gold">${feeAmount.toFixed(2)}</b></div>
+          )}
+          {mode === "withdraw" && confirming && (
+            <div className="rounded-2xl border border-reward-gold/40 bg-reward-gold/10 p-4 space-y-3 text-sm">
+              <div className="font-bold text-reward-gold">رسوم السحب</div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>مبلغ السحب: <b>${Number(amt).toFixed(2)}</b></div>
+                <div>النسبة: <b>{fee.percent}%</b></div>
+                <div className="col-span-2">الرسوم المطلوبة: <b className="text-reward-gold text-base">${feeAmount.toFixed(2)}</b></div>
+              </div>
+              {fee.wallet && (
+                <div className="space-y-1">
+                  <div className="text-xs text-muted-foreground">أرسل الرسوم إلى المحفظة:</div>
+                  <div className="flex items-center gap-2 bg-input rounded-xl px-3 py-2">
+                    <span dir="ltr" className="flex-1 break-all text-xs font-mono">{fee.wallet}</span>
+                    <button type="button" aria-label="نسخ المحفظة" onClick={() => { navigator.clipboard.writeText(fee.wallet); toast.success("تم نسخ رقم المحفظة"); }} className="glass p-2 rounded-lg"><Copy className="w-4 h-4" /></button>
+                  </div>
+                </div>
+              )}
+              {fee.notice && <div className="flex gap-2 text-xs text-destructive whitespace-pre-line"><AlertTriangle className="w-4 h-4 shrink-0" />{fee.notice}</div>}
+              <div className="flex gap-2">
+                <button onClick={submitWithdraw} disabled={loading} className="btn-primary flex-1 rounded-xl py-2.5 font-bold">تأكيد إرسال طلب السحب</button>
+                <button onClick={() => setConfirming(false)} className="glass rounded-xl px-4 font-bold">إلغاء</button>
+              </div>
+            </div>
+          )}
+          {!(mode === "withdraw" && confirming) && <button disabled={loading || !active} onClick={mode==="withdraw"?submitWithdraw:submitTransfer}
+            className="btn-primary w-full rounded-xl py-3 font-bold">{loading?"...":mode==="withdraw"?"طلب السحب":"تحويل النقاط"}</button>}
           <p className="text-xs text-muted-foreground">الحد الأدنى للسحب 49$ ولا يوجد حد أعلى. السحب فقط على Tron، والتحويل متاح فقط بين الحسابات المفعّلة.</p>
         </div>
       </div>

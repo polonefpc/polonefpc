@@ -92,7 +92,7 @@
   body {
     background: var(--gradient-hero);
     color: var(--color-foreground);
-    font-family: 'Cairo', 'Tajawal', system-ui, -apple-system, sans-serif;
+    font-family: 'IBM Plex Sans Arabic', 'Cairo', system-ui, sans-serif;
     min-height: 100vh;
   }
 }
@@ -171,3 +171,23 @@
   .market-arrow-line, .notification-banner, .notification-timer { animation: none; }
   .market-arrow-line { stroke-dashoffset: 0; }
 }
+
+@layer base {
+  h1, h2, h3, .font-display { font-family: 'Readex Pro', 'IBM Plex Sans Arabic', sans-serif; letter-spacing: -0.01em; }
+}
+:root { --reward-gold: oklch(0.82 0.15 85); }
+@theme inline { --color-reward-gold: var(--reward-gold); }
+.wheel-stage { position: relative; width: min(20rem, 86vw); margin: 0 auto; filter: drop-shadow(0 18px 40px oklch(0.82 0.15 85 / 0.25)); }
+.wheel-pointer { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 26px solid var(--reward-gold); z-index: 2; }
+.reward-wheel { width: 100%; height: auto; transition: transform 4.5s cubic-bezier(0.17, 0.67, 0.12, 1); }
+@media (prefers-reduced-motion: reduce) { .reward-wheel { transition: none; } }
+.wheel-rim { fill: var(--reward-gold); }
+.wheel-slice path { stroke: var(--background); stroke-width: 2; }
+.wheel-tone-0 path { fill: var(--primary); }
+.wheel-tone-1 path { fill: var(--surface-2); }
+.wheel-tone-2 path { fill: var(--accent); }
+.wheel-tone-3 path { fill: oklch(0.45 0.12 160); }
+.wheel-label { fill: var(--foreground); font-size: 13px; font-weight: 700; }
+.wheel-hub { fill: var(--background); stroke: var(--reward-gold); stroke-width: 4; }
+.wheel-brand { fill: var(--reward-gold); font-size: 14px; font-weight: 800; }
+.reward-input { width: 100%; background: var(--input); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.6rem 0.9rem; }
