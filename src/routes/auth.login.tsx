@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { BrandLogo } from "@/components/brand-logo";
 
 export const Route = createFileRoute("/auth/login")({
+  head: () => ({ meta: [{ title: "تسجيل الدخول — Polone" }, { name: "description", content: "الدخول الآمن إلى حساب Polone." }, { property: "og:title", content: "تسجيل الدخول — Polone" }, { property: "og:description", content: "الدخول الآمن إلى حساب Polone." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   validateSearch: (s: Record<string, unknown>): { next?: string } =>
     typeof s.next === "string" && s.next ? { next: s.next } : {},
   component: Login,
