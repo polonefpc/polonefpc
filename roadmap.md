@@ -1,5 +1,10 @@
 # Roadmap
 
+- [ ] Improve official-app typography and comfortable color palette
+- [ ] Add private live support with admin customer details and conversation deletion
+- [ ] Add multi-network withdrawals and post-submission fee display
+- [ ] Verify support and withdrawal flows
+
 - [x] Redesign the home market indicator as a free-standing long zigzag arrow
 - [x] Add a swipeable home advertisement carousel managed by admins
 - [x] Add admin notifications for all users or selected customers with dismiss/10-second behavior
