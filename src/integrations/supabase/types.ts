@@ -651,6 +651,73 @@ export type Database = {
         }
         Relationships: []
       }
+      support_conversations: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_conversations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_messages: {
+        Row: {
+          body: string
+          conversation_id: string
+          created_at: string
+          id: string
+          sender_id: string
+        }
+        Insert: {
+          body: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          sender_id: string
+        }
+        Update: {
+          body?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "support_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_submissions: {
         Row: {
           admin_note: string
@@ -877,7 +944,12 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          fee_amount: number
+          fee_notice: string
+          fee_percent: number
+          fee_wallet: string
           id: string
+          network: string
           processed_at: string | null
           status: string
           user_id: string
@@ -886,7 +958,12 @@ export type Database = {
         Insert: {
           amount: number
           created_at?: string
+          fee_amount?: number
+          fee_notice?: string
+          fee_percent?: number
+          fee_wallet?: string
           id?: string
+          network?: string
           processed_at?: string | null
           status?: string
           user_id: string
@@ -895,7 +972,12 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          fee_amount?: number
+          fee_notice?: string
+          fee_percent?: number
+          fee_wallet?: string
           id?: string
+          network?: string
           processed_at?: string | null
           status?: string
           user_id?: string
@@ -954,6 +1036,29 @@ export type Database = {
       reject_package_change: {
         Args: { _admin_note: string; _request_id: string }
         Returns: undefined
+      }
+      request_network_withdrawal: {
+        Args: { _amount: number; _network: string; _wallet: string }
+        Returns: {
+          amount: number
+          created_at: string
+          fee_amount: number
+          fee_notice: string
+          fee_percent: number
+          fee_wallet: string
+          id: string
+          network: string
+          processed_at: string | null
+          status: string
+          user_id: string
+          wallet_address: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "withdrawals"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       request_package_change: {
         Args: { _note: string; _to_package_id: number; _user_id: string }

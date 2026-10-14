@@ -6,6 +6,7 @@ import { z } from "zod";
 import { BrandLogo } from "@/components/brand-logo";
 
 export const Route = createFileRoute("/auth/signup")({
+  head: () => ({ meta: [{ title: "إنشاء حساب — Polone" }, { name: "description", content: "إنشاء حساب جديد في منصة Polone." }, { property: "og:title", content: "إنشاء حساب — Polone" }, { property: "og:description", content: "إنشاء حساب جديد في منصة Polone." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   validateSearch: (s: Record<string, unknown>): { ref?: string; next?: string } => ({
     ...(typeof s.ref === "string" && s.ref ? { ref: s.ref } : {}),
     ...(typeof s.next === "string" && s.next ? { next: s.next } : {}),

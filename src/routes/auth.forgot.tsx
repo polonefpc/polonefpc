@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { BrandLogo } from "@/components/brand-logo";
 
 export const Route = createFileRoute("/auth/forgot")({
-  head: () => ({ meta: [{ title: "استرجاع كلمة المرور | Polone" }, { name: "description", content: "إعادة تعيين كلمة مرور حساب Polone" }] }),
+  head: () => ({ meta: [{ title: "استرجاع كلمة المرور — Polone" }, { name: "description", content: "استعادة الوصول إلى حساب Polone." }, { property: "og:title", content: "استرجاع كلمة المرور — Polone" }, { property: "og:description", content: "استعادة الوصول إلى حساب Polone." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: Forgot,
 });
 

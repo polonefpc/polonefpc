@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { BrandLogo } from "@/components/brand-logo";
 
 export const Route = createFileRoute("/auth/reset")({
-  head: () => ({ meta: [{ title: "كلمة مرور جديدة | Polone" }, { name: "description", content: "تعيين كلمة مرور جديدة لحساب Polone" }] }),
+  head: () => ({ meta: [{ title: "كلمة مرور جديدة — Polone" }, { name: "description", content: "تعيين كلمة مرور جديدة لحساب Polone." }, { property: "og:title", content: "كلمة مرور جديدة — Polone" }, { property: "og:description", content: "تعيين كلمة مرور جديدة لحساب Polone." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: Reset,
 });
 

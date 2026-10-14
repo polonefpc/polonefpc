@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, RefreshCw, Wallet } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 
-export const Route = createFileRoute("/_authenticated/wallet")({ component: WalletCard });
+export const Route = createFileRoute("/_authenticated/wallet")({ head: () => ({ meta: [{ title: "المحفظة الرقمية — Polone" }, { name: "description", content: "عرض الرصيد والباقة في محفظة Polone." }, { property: "og:title", content: "المحفظة الرقمية — Polone" }, { property: "og:description", content: "عرض الرصيد والباقة في محفظة Polone." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: WalletCard });
 
 function WalletCard() {
   const [profile, setProfile] = useState<any>(null);

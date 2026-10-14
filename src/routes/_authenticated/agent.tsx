@@ -6,7 +6,7 @@ import { agentGrantPoints } from "@/lib/trading.functions";
 import { ArrowLeft, Send, LogOut } from "lucide-react";
 import { BrandLogo } from "@/components/brand-logo";
 
-export const Route = createFileRoute("/_authenticated/agent")({ component: AgentPanel });
+export const Route = createFileRoute("/_authenticated/agent")({ head: () => ({ meta: [{ title: "حساب التاجر — Polone" }, { name: "description", content: "إدارة رصيد وتحويلات تاجر Polone." }, { property: "og:title", content: "حساب التاجر — Polone" }, { property: "og:description", content: "إدارة رصيد وتحويلات تاجر Polone." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }), component: AgentPanel });
 
 function AgentPanel() {
   const nav = useNavigate();
