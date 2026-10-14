@@ -42,27 +42,27 @@
   --radius: 0.875rem;
 
   /* Polone palette — deep black + electric blue */
-  --background: oklch(0.13 0.02 260);
+  --background: oklch(0.17 0.012 250);
   --foreground: oklch(0.97 0.01 240);
 
-  --surface: oklch(0.17 0.03 260);
-  --surface-2: oklch(0.21 0.04 260);
+  --surface: oklch(0.215 0.014 250);
+  --surface-2: oklch(0.265 0.017 250);
 
-  --card: oklch(0.17 0.03 260);
+  --card: oklch(0.215 0.014 250);
   --card-foreground: oklch(0.97 0.01 240);
-  --popover: oklch(0.17 0.03 260);
+  --popover: oklch(0.215 0.014 250);
   --popover-foreground: oklch(0.97 0.01 240);
 
-  --primary: oklch(0.65 0.21 255);
+  --primary: oklch(0.72 0.13 220);
   --primary-foreground: oklch(0.99 0.005 240);
 
-  --secondary: oklch(0.24 0.05 260);
+  --secondary: oklch(0.28 0.025 220);
   --secondary-foreground: oklch(0.97 0.01 240);
 
   --muted: oklch(0.22 0.03 260);
-  --muted-foreground: oklch(0.7 0.03 250);
+  --muted-foreground: oklch(0.77 0.015 250);
 
-  --accent: oklch(0.55 0.23 265);
+  --accent: oklch(0.68 0.13 165);
   --accent-foreground: oklch(0.99 0.005 240);
 
   --destructive: oklch(0.62 0.24 25);
@@ -72,13 +72,13 @@
   --success-foreground: oklch(0.12 0.02 260);
 
   --border: oklch(0.28 0.04 260);
-  --input: oklch(0.24 0.04 260);
+  --input: oklch(0.25 0.018 250);
   --ring: oklch(0.65 0.21 255);
 
-  --gradient-primary: linear-gradient(135deg, oklch(0.55 0.23 265), oklch(0.65 0.21 255));
+  --gradient-primary: linear-gradient(110deg, var(--primary), color-mix(in oklab, var(--primary) 80%, var(--success)));
   --gradient-hero: radial-gradient(ellipse at top, oklch(0.30 0.15 260 / 0.6), transparent 60%),
                    linear-gradient(180deg, oklch(0.13 0.02 260), oklch(0.08 0.02 260));
-  --gradient-card: linear-gradient(160deg, oklch(0.22 0.05 260 / 0.9), oklch(0.15 0.03 260 / 0.9));
+  --gradient-card: linear-gradient(160deg, var(--surface-2), var(--surface));
   --shadow-glow: 0 0 40px oklch(0.65 0.21 255 / 0.35);
   --shadow-card: 0 10px 30px -10px oklch(0 0 0 / 0.6);
   --signal-glow: oklch(0.74 0.18 165);
@@ -92,7 +92,9 @@
   body {
     background: var(--gradient-hero);
     color: var(--color-foreground);
-    font-family: 'IBM Plex Sans Arabic', 'Cairo', system-ui, sans-serif;
+    font-family: 'Noto Sans Arabic', system-ui, sans-serif;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
     min-height: 100vh;
   }
 }
@@ -173,7 +175,7 @@
 }
 
 @layer base {
-  h1, h2, h3, .font-display { font-family: 'Readex Pro', 'IBM Plex Sans Arabic', sans-serif; letter-spacing: -0.01em; }
+  h1, h2, h3, .font-display { font-family: 'Noto Sans Arabic', system-ui, sans-serif; letter-spacing: 0; }
 }
 :root { --reward-gold: oklch(0.82 0.15 85); }
 @theme inline { --color-reward-gold: var(--reward-gold); }

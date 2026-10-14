@@ -9,6 +9,7 @@ import { runDailyYields } from "@/lib/admin.functions";
 import { promoteAgent, revokeAgent, updateAgentBalance } from "@/lib/agent-admin.functions";
 import { AccountsAdmin } from "@/components/accounts-admin";
 import { RewardsAdmin, WithdrawFeeAdmin } from "@/components/rewards-admin";
+import { SupportChat } from "@/components/support-chat";
 import { BrandLogo } from "@/components/brand-logo";
 
 
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: Admin,
 });
 
-type Tab = "deposits" | "withdrawals" | "orders" | "users" | "packages" | "products" | "agents" | "contacts" | "settings" | "help" | "advertisements" | "notifications" | "accounts" | "active" | "rewards" | "withdrawFee";
+type Tab = "deposits" | "withdrawals" | "orders" | "users" | "packages" | "products" | "agents" | "contacts" | "settings" | "help" | "advertisements" | "notifications" | "accounts" | "active" | "rewards" | "withdrawFee" | "support";
 const TABS: { id: Tab; label: string }[] = [
   { id: "deposits", label: "طلبات الإيداع" },
   { id: "withdrawals", label: "طلبات السحب" },
@@ -41,6 +42,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "active", label: "الحسابات المفعلة" },
   { id: "rewards", label: "العجلة والمهام" },
   { id: "withdrawFee", label: "رسوم السحب" },
+  { id: "support", label: "محادثات الدعم" },
   { id: "settings", label: "الإعدادات" },
 ];
 
@@ -93,6 +95,7 @@ function Admin() {
         
         {tab === "rewards" && <RewardsAdmin />}
         {tab === "withdrawFee" && <WithdrawFeeAdmin />}
+        {tab === "support" && <SupportChat admin />}
         {tab === "settings" && <Settings />}
       </div>
     </div>
@@ -182,6 +185,7 @@ function Withdrawals() {
               <div className="text-xs text-muted-foreground">{r.profiles?.email}</div>
               <div className="text-sm mt-1">المبلغ: <b>${r.amount}</b> • رصيد الحساب: ${r.profiles?.balance}</div>
               <div className="text-xs font-mono break-all mt-1">{r.wallet_address}</div>
+              <div className="mt-2 text-xs text-muted-foreground">الشبكة: {r.network} · الرسوم: {r.fee_percent}% = ${Number(r.fee_amount || 0).toFixed(2)}</div>
             </div>
             <StatusBadge status={r.status} />
           </div>

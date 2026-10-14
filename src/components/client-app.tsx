@@ -8,7 +8,9 @@ import type { Role } from "@/lib/auth";
 import { requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
 import { LanguageSwitch } from "@/components/language-switch";
 import { HelpButton } from "@/components/help-button";
-import { SupportButton } from "@/components/support-button";
+import { SupportChat } from "@/components/support-chat";
+import { Button } from "@/components/ui/button";
+import { requestWithdrawal } from "@/lib/withdrawal.functions";
 import { BrandLogo } from "@/components/brand-logo";
 import { RewardsClient } from "@/components/rewards-client";
 
@@ -68,7 +70,7 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
 
   return (
     <div className="internal-app min-h-screen pb-24">
-      <SupportButton />
+      <SupportChat />
       <header className="sticky top-0 z-20 px-4 py-3 glass border-b border-border flex items-center justify-between gap-2">
         <BrandLogo className="h-8 w-8" />
         <div className="flex items-center gap-2">
@@ -653,10 +655,12 @@ export function WithdrawTab({ profile, reload }: any) {
   const [showWithdrawDesc, setShowWithdrawDesc] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fee, setFee] = useState({ percent: 0, wallet: "", notice: "" });
-  const [confirming, setConfirming] = useState(false);
+  const [network, setNetwork] = useState<"TRON" | "BNB" | "ETHEREUM" | "SOLANA">("TRON");
+  const [receipt, setReceipt] = useState<{ amount: number; network: string; fee_percent: number; fee_amount: number; fee_wallet: string; fee_notice: string } | null>(null);
+  const requestWithdrawalFn = useServerFn(requestWithdrawal);
   const transferPointsFn = useServerFn(transferPoints);
   const active = !!profile?.is_active;
-  const withdrawInfo = withdrawDesc || "السحب يتم فقط إلى محفظة Tron / TRC20. تأكد من كتابة عنوان المحفظة الصحيح قبل إرسال الطلب، والحد الأدنى للسحب 49$.";
+  const withdrawInfo = withdrawDesc || "اختر شبكة السحب المطابقة لمحفظتك. الحد الأدنى للسحب 49$.";
 
   useEffect(() => {
     supabase.from("settings").select("value").eq("key", "withdraw_description").maybeSingle()
@@ -667,7 +671,6 @@ export function WithdrawTab({ profile, reload }: any) {
         setFee({ percent: Math.max(0, Number(m.withdraw_fee_percent ?? 0) || 0), wallet: m.withdraw_fee_wallet ?? "", notice: m.withdraw_fee_notice ?? "" });
       });
   }, []);
-  const feeAmount = Math.round(Number(amt || 0) * fee.percent) / 100;
 
   const submitWithdraw = async () => {
     if (!active) { toast.error("حسابك غير مفعّل — لا يمكن السحب"); return; }
@@ -675,16 +678,18 @@ export function WithdrawTab({ profile, reload }: any) {
     if (!a || a < 49) { toast.error("الحد الأدنى للسحب 49$"); return; }
     if (!wallet.trim()) { toast.error("أدخل عنوان المحفظة"); return; }
     if (a > Number(profile?.balance ?? 0)) { toast.error("رصيد غير كافٍ"); return; }
-    if (fee.percent > 0 && !confirming) { setConfirming(true); return; }
-    setConfirming(false);
     setLoading(true);
-    const { data: u } = await supabase.auth.getUser();
-    const { error } = await supabase.from("withdrawals").insert({ user_id: u.user!.id, wallet_address: wallet, amount: a });
-    if (error) { setLoading(false); toast.error(error.message); return; }
-    await supabase.from("profiles").update({ balance: Number(profile.balance) - a }).eq("id", u.user!.id);
-    setLoading(false);
-    toast.success("تم إرسال طلب السحب وخصم النقاط");
-    setWallet(""); setAmt(""); reload();
+    setReceipt(null);
+    try {
+      const result = await requestWithdrawalFn({ data: { amount: a, wallet: wallet.trim(), network } });
+      if (!result.ok) { toast.error(result.error); return; }
+      const r = result.request;
+      if (!r) throw new Error("لم يتم استلام الطلب");
+      setReceipt({ amount: Number(r.amount), network: r.network, fee_percent: Number(r.fee_percent), fee_amount: Number(r.fee_amount), fee_wallet: r.fee_wallet, fee_notice: r.fee_notice });
+      toast.success("تم إرسال طلب السحب");
+      setWallet(""); setAmt(""); reload();
+    } catch { toast.error("تعذر إرسال طلب السحب، تحقق من الاتصال وحاول مجدداً"); }
+    finally { setLoading(false); }
   };
 
   const submitTransfer = async () => {
@@ -721,7 +726,7 @@ export function WithdrawTab({ profile, reload }: any) {
             <>
               <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-start gap-2">
                 <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-                <span className="font-bold">تنبيه: السحب متاح فقط على محفظة Tron / TRC20.</span>
+                <span className="font-bold">تأكد أن شبكة السحب مطابقة لشبكة محفظتك.</span>
               </div>
               <div className="space-y-2">
                 <button type="button" onClick={() => setShowWithdrawDesc(v => !v)} className="glass px-3 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-2">
@@ -729,7 +734,8 @@ export function WithdrawTab({ profile, reload }: any) {
                 </button>
                 {showWithdrawDesc && <div className="rounded-xl bg-secondary/40 px-4 py-3 text-xs leading-6 text-muted-foreground whitespace-pre-line">{withdrawInfo}</div>}
               </div>
-              <input className="w-full bg-input border border-border rounded-xl px-4 py-3" placeholder="عنوان محفظة Tron / TRC20"
+              <label className="block space-y-2 text-sm"><span>شبكة السحب</span><select aria-label="شبكة السحب" className="reward-input" value={network} onChange={e => setNetwork(e.target.value as typeof network)}><option value="TRON">TRON · TRC20</option><option value="BNB">BNB Smart Chain · BEP20</option><option value="ETHEREUM">Ethereum · ERC20</option><option value="SOLANA">Solana · SPL</option></select></label>
+              <input aria-label="عنوان محفظة السحب" className="w-full bg-input border border-border rounded-xl px-4 py-3" placeholder="عنوان المحفظة على الشبكة المختارة"
                 value={wallet} onChange={e=>setWallet(e.target.value)} />
             </>
           ) : (
@@ -737,37 +743,11 @@ export function WithdrawTab({ profile, reload }: any) {
               placeholder="رمز المستلم (5 أرقام)" value={toCode} onChange={e=>setToCode(e.target.value.replace(/\D/g,""))} />
           )}
           <input type="number" step="0.01" min={mode==="withdraw"?49:0.01} className="w-full bg-input border border-border rounded-xl px-4 py-3"
-            placeholder={mode==="withdraw" ? "المبلغ (الحد الأدنى 49$)" : "المبلغ"} value={amt} onChange={e=>{ setAmt(e.target.value); setConfirming(false); }} />
-          {mode === "withdraw" && fee.percent > 0 && Number(amt) > 0 && !confirming && (
-            <div className="text-xs text-muted-foreground">رسوم السحب {fee.percent}% = <b className="text-reward-gold">${feeAmount.toFixed(2)}</b></div>
-          )}
-          {mode === "withdraw" && confirming && (
-            <div className="rounded-2xl border border-reward-gold/40 bg-reward-gold/10 p-4 space-y-3 text-sm">
-              <div className="font-bold text-reward-gold">رسوم السحب</div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div>مبلغ السحب: <b>${Number(amt).toFixed(2)}</b></div>
-                <div>النسبة: <b>{fee.percent}%</b></div>
-                <div className="col-span-2">الرسوم المطلوبة: <b className="text-reward-gold text-base">${feeAmount.toFixed(2)}</b></div>
-              </div>
-              {fee.wallet && (
-                <div className="space-y-1">
-                  <div className="text-xs text-muted-foreground">أرسل الرسوم إلى المحفظة:</div>
-                  <div className="flex items-center gap-2 bg-input rounded-xl px-3 py-2">
-                    <span dir="ltr" className="flex-1 break-all text-xs font-mono">{fee.wallet}</span>
-                    <button type="button" aria-label="نسخ المحفظة" onClick={() => { navigator.clipboard.writeText(fee.wallet); toast.success("تم نسخ رقم المحفظة"); }} className="glass p-2 rounded-lg"><Copy className="w-4 h-4" /></button>
-                  </div>
-                </div>
-              )}
-              {fee.notice && <div className="flex gap-2 text-xs text-destructive whitespace-pre-line"><AlertTriangle className="w-4 h-4 shrink-0" />{fee.notice}</div>}
-              <div className="flex gap-2">
-                <button onClick={submitWithdraw} disabled={loading} className="btn-primary flex-1 rounded-xl py-2.5 font-bold">تأكيد إرسال طلب السحب</button>
-                <button onClick={() => setConfirming(false)} className="glass rounded-xl px-4 font-bold">إلغاء</button>
-              </div>
-            </div>
-          )}
-          {!(mode === "withdraw" && confirming) && <button disabled={loading || !active} onClick={mode==="withdraw"?submitWithdraw:submitTransfer}
-            className="btn-primary w-full rounded-xl py-3 font-bold">{loading?"...":mode==="withdraw"?"طلب السحب":"تحويل النقاط"}</button>}
-          <p className="text-xs text-muted-foreground">الحد الأدنى للسحب 49$ ولا يوجد حد أعلى. السحب فقط على Tron، والتحويل متاح فقط بين الحسابات المفعّلة.</p>
+            placeholder={mode==="withdraw" ? "المبلغ (الحد الأدنى 49$)" : "المبلغ"} value={amt} onChange={e=>setAmt(e.target.value)} />
+          <Button disabled={loading || !active} onClick={mode === "withdraw" ? submitWithdraw : submitTransfer} className="w-full h-12">{loading ? "جارٍ إرسال الطلب…" : mode === "withdraw" ? "إرسال طلب السحب" : "تحويل النقاط"}</Button>
+          {mode === "withdraw" && receipt && <div role="status" className="space-y-3 rounded-lg border border-success/40 bg-success/10 p-4 text-sm"><h3 className="font-bold text-success">تم إرسال طلب السحب — قيد المراجعة</h3><div>المبلغ: ${receipt.amount.toFixed(2)} · {receipt.network}</div><div>نسبة رسوم السحب: <b>{receipt.fee_percent}%</b></div><div>الرسوم المطلوبة: <b>${receipt.fee_amount.toFixed(2)}</b></div>{receipt.fee_amount > 0 && receipt.fee_wallet && <div><p className="mb-2 text-xs text-muted-foreground">محفظة استلام الرسوم</p><div className="flex items-center gap-2 rounded-md bg-input p-2"><span dir="ltr" className="min-w-0 flex-1 break-all text-xs">{receipt.fee_wallet}</span><Button size="icon" variant="ghost" aria-label="نسخ محفظة الرسوم" onClick={async () => { try { await navigator.clipboard.writeText(receipt.fee_wallet); toast.success("تم نسخ المحفظة"); } catch { toast.error("تعذر النسخ"); } }}><Copy /></Button></div></div>}{receipt.fee_notice && <p className="whitespace-pre-wrap text-muted-foreground">{receipt.fee_notice}</p>}</div>}
+          {mode === "withdraw" && !receipt && fee.percent > 0 && <p className="text-xs text-muted-foreground">رسوم السحب: {fee.percent}%، تظهر تفاصيلها بعد إرسال الطلب.</p>}
+          <p className="text-xs text-muted-foreground">الحد الأدنى للسحب 49$ ولا يوجد حد أعلى. اختر الشبكة المطابقة للمحفظة، والتحويل متاح فقط بين الحسابات المفعّلة.</p>
         </div>
       </div>
     </div>
