@@ -1,0 +1,35 @@
+CREATE TABLE public.support_conversations (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE UNIQUE, category text NOT NULL, description text NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now());
+GRANT SELECT, INSERT ON public.support_conversations TO authenticated;
+GRANT DELETE, UPDATE ON public.support_conversations TO authenticated;
+GRANT ALL ON public.support_conversations TO service_role;
+ALTER TABLE public.support_conversations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY support_read ON public.support_conversations FOR SELECT TO authenticated USING (user_id=auth.uid() OR public.has_role(auth.uid(),'admin'));
+CREATE POLICY support_create ON public.support_conversations FOR INSERT TO authenticated WITH CHECK (user_id=auth.uid() AND length(category) BETWEEN 1 AND 80 AND length(description) BETWEEN 1 AND 3000);
+CREATE POLICY support_delete ON public.support_conversations FOR DELETE TO authenticated USING (public.has_role(auth.uid(),'admin'));
+CREATE TABLE public.support_messages (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), conversation_id uuid NOT NULL REFERENCES public.support_conversations(id) ON DELETE CASCADE, sender_id uuid NOT NULL, body text NOT NULL CHECK(length(body) BETWEEN 1 AND 3000), created_at timestamptz NOT NULL DEFAULT now());
+GRANT SELECT, INSERT ON public.support_messages TO authenticated;
+GRANT ALL ON public.support_messages TO service_role;
+ALTER TABLE public.support_messages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY messages_read ON public.support_messages FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM public.support_conversations c WHERE c.id=conversation_id AND (c.user_id=auth.uid() OR public.has_role(auth.uid(),'admin'))));
+CREATE POLICY messages_send ON public.support_messages FOR INSERT TO authenticated WITH CHECK (sender_id=auth.uid() AND EXISTS (SELECT 1 FROM public.support_conversations c WHERE c.id=conversation_id AND (c.user_id=auth.uid() OR public.has_role(auth.uid(),'admin'))));
+CREATE INDEX support_message_order ON public.support_messages(conversation_id,created_at);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.support_conversations, public.support_messages;
+ALTER TABLE public.withdrawals ADD COLUMN network text NOT NULL DEFAULT 'TRON', ADD COLUMN fee_percent numeric NOT NULL DEFAULT 0, ADD COLUMN fee_amount numeric NOT NULL DEFAULT 0, ADD COLUMN fee_wallet text NOT NULL DEFAULT '', ADD COLUMN fee_notice text NOT NULL DEFAULT '';
+CREATE OR REPLACE FUNCTION public.request_network_withdrawal(_amount numeric,_wallet text,_network text) RETURNS public.withdrawals LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE uid uuid:=auth.uid(); p public.profiles; result public.withdrawals; pct numeric:=0;
+BEGIN
+IF uid IS NULL THEN RAISE EXCEPTION 'يرجى تسجيل الدخول'; END IF;
+IF _network NOT IN ('TRON','BNB','ETHEREUM','SOLANA') THEN RAISE EXCEPTION 'اختر شبكة صحيحة'; END IF;
+IF _amount IS NULL OR _amount < 49 OR _amount <> round(_amount,2) THEN RAISE EXCEPTION 'الحد الأدنى للسحب 49$ وبمنزلتين عشريتين'; END IF;
+IF _wallet IS NULL OR length(trim(_wallet)) NOT BETWEEN 20 AND 200 THEN RAISE EXCEPTION 'عنوان المحفظة غير صالح'; END IF;
+SELECT * INTO p FROM public.profiles WHERE id=uid FOR UPDATE;
+IF p.id IS NULL OR NOT p.is_active THEN RAISE EXCEPTION 'الحساب غير مفعّل'; END IF;
+IF p.balance < _amount THEN RAISE EXCEPTION 'الرصيد غير كافٍ'; END IF;
+BEGIN SELECT least(100,greatest(0,value::numeric)) INTO pct FROM public.settings WHERE key='withdraw_fee_percent'; EXCEPTION WHEN others THEN pct:=0; END;
+pct:=coalesce(pct,0);
+INSERT INTO public.withdrawals(user_id,wallet_address,amount,network,fee_percent,fee_amount,fee_wallet,fee_notice) VALUES(uid,trim(_wallet),_amount,_network,pct,round(_amount*pct/100,2),coalesce((SELECT value FROM public.settings WHERE key='withdraw_fee_wallet'),''),coalesce((SELECT value FROM public.settings WHERE key='withdraw_fee_notice'),'')) RETURNING * INTO result;
+UPDATE public.profiles SET balance=balance-_amount WHERE id=uid;
+RETURN result;
+END; $$;
+REVOKE ALL ON FUNCTION public.request_network_withdrawal(numeric,text,text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.request_network_withdrawal(numeric,text,text) TO authenticated;
