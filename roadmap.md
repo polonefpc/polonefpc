@@ -1,5 +1,8 @@
 # Roadmap
 
+- [ ] Change the visual theme to blue and modernize navigation icons
+- [ ] Refresh the weekly market indicator and smooth interface transitions
+- [ ] Complete pending responsive layout and functional verification
 - [ ] Improve official-app typography and comfortable color palette
 - [ ] Add private live support with admin customer details and conversation deletion
 - [ ] Add multi-network withdrawals and post-submission fee display
