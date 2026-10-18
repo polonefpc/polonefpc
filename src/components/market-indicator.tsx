@@ -1,12 +1,13 @@
 import { useId, useState } from "react";
 import { TrendingDown, TrendingUp } from "lucide-react";
-
-export type SignalPoint = { d: string; dir: "up" | "down"; v: number | null };
+import { weeklyMarketSeries, type SignalPoint } from "@/lib/market-series";
+export type { SignalPoint } from "@/lib/market-series";
 
 export function MarketIndicator({ direction, history, value }: { direction: "up" | "down"; history: SignalPoint[]; value: string }) {
   const id = useId().replace(/:/g, "");
   const [hovered, setHovered] = useState<number | null>(null);
-  const days = history.length ? history.slice(-7) : [{ d: "", dir: direction, v: Number(value) || null }];
+  const series = weeklyMarketSeries(history, new Date().toISOString().slice(0, 10));
+  const days = series.length ? series : [{ d: "", dir: direction, v: Number(value) || null }];
   let level = 0;
   const values = days.map(day => {
     level = day.v != null && Number.isFinite(day.v) ? day.v : level + (day.dir === "up" ? 1 : -1);

@@ -27,6 +27,12 @@ function Wheel({ data, reload, onCredit }: { data: Data; reload: () => Promise<v
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
   const prizes = data.round?.prizes ?? [];
   const previous = data.spins.find(s => s.round_id === data.round?.id);
+  useEffect(() => {
+    if (!previous || busy || result || !prizes.length) return;
+    const index = prizes.findIndex(p => p.id === previous.prize_id);
+    if (index < 0) return;
+    setRotation((360 - (index + 0.5) * (360 / prizes.length) + 360) % 360);
+  }, [previous?.id, data.round?.id]);
   const canSpin = data.visible && data.active && data.round?.is_open && !previous && !result && !busy;
   const turn = async () => {
     if (!canSpin || !data.round) return;

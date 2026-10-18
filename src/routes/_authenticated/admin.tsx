@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, ChevronUp, ChevronDown } from "lucide-react";
+import { ArrowLeft, ChevronUp, ChevronDown, ArrowDownLeft, ArrowUpRight, ShoppingBag, UsersRound, Layers3, Boxes, MapPinned, Store, CircleHelp, Megaphone, BellRing, ContactRound, BadgeCheck, Sparkles, Percent, MessagesSquare, Settings2 } from "lucide-react";
 import { runDailyYields } from "@/lib/admin.functions";
 import { promoteAgent, revokeAgent, updateAgentBalance } from "@/lib/agent-admin.functions";
 import { AccountsAdmin } from "@/components/accounts-admin";
 import { RewardsAdmin, WithdrawFeeAdmin } from "@/components/rewards-admin";
 import { SupportChat } from "@/components/support-chat";
 import { BrandLogo } from "@/components/brand-logo";
+import { Button } from "@/components/ui/button";
 
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -45,6 +46,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "support", label: "محادثات الدعم" },
   { id: "settings", label: "الإعدادات" },
 ];
+const TAB_ICONS = { deposits: ArrowDownLeft, withdrawals: ArrowUpRight, orders: ShoppingBag, users: UsersRound, packages: Layers3, products: Boxes, contacts: MapPinned, agents: Store, help: CircleHelp, advertisements: Megaphone, notifications: BellRing, accounts: ContactRound, active: BadgeCheck, rewards: Sparkles, withdrawFee: Percent, support: MessagesSquare, settings: Settings2 };
 
 function Admin() {
   const nav = useNavigate();
@@ -74,10 +76,10 @@ function Admin() {
       </header>
       <div className="max-w-5xl mx-auto px-4 py-4">
         <div className="flex flex-wrap gap-2 mb-4">
-          {TABS.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-bold ${tab===t.id ? "btn-primary" : "glass"}`}>{t.label}</button>
-          ))}
+          {TABS.map(t => { const Icon = TAB_ICONS[t.id]; return (
+            <Button key={t.id} onClick={() => setTab(t.id)} variant={tab === t.id ? "default" : "secondary"} aria-current={tab === t.id ? "page" : undefined}
+              className="rounded-lg text-xs"><Icon strokeWidth={1.7} />{t.label}</Button>
+          ); })}
         </div>
         {tab === "deposits" && <Deposits />}
         {tab === "withdrawals" && <Withdrawals />}

@@ -21,6 +21,14 @@ function oauth(): OAuthApi {
 }
 
 export const Route = createFileRoute("/.lovable/oauth/consent")({
+  head: () => ({ meta: [
+    { title: "الموافقة على الاتصال — Polone" },
+    { name: "description", content: "مراجعة اتصال التطبيقات بحسابك في Polone." },
+    { property: "og:title", content: "الموافقة على الاتصال — Polone" },
+    { property: "og:description", content: "مراجعة اتصال التطبيقات بحسابك في Polone." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   ssr: false,
   validateSearch: (s: Record<string, unknown>) => ({
     authorization_id: typeof s.authorization_id === "string" ? s.authorization_id : "",
