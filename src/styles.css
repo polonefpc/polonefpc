@@ -53,16 +53,16 @@
   --popover: oklch(0.215 0.014 250);
   --popover-foreground: oklch(0.97 0.01 240);
 
-  --primary: oklch(0.72 0.13 220);
+  --primary: oklch(0.66 0.19 255);
   --primary-foreground: oklch(0.99 0.005 240);
 
-  --secondary: oklch(0.28 0.025 220);
+  --secondary: oklch(0.28 0.035 255);
   --secondary-foreground: oklch(0.97 0.01 240);
 
   --muted: oklch(0.22 0.03 260);
   --muted-foreground: oklch(0.77 0.015 250);
 
-  --accent: oklch(0.68 0.13 165);
+  --accent: oklch(0.77 0.12 230);
   --accent-foreground: oklch(0.99 0.005 240);
 
   --destructive: oklch(0.62 0.24 25);
@@ -75,13 +75,14 @@
   --input: oklch(0.25 0.018 250);
   --ring: oklch(0.65 0.21 255);
 
-  --gradient-primary: linear-gradient(110deg, var(--primary), color-mix(in oklab, var(--primary) 80%, var(--success)));
+  --gradient-primary: linear-gradient(110deg, var(--primary), color-mix(in oklab, var(--primary) 78%, var(--accent)));
   --gradient-hero: radial-gradient(ellipse at top, oklch(0.30 0.15 260 / 0.6), transparent 60%),
                    linear-gradient(180deg, oklch(0.13 0.02 260), oklch(0.08 0.02 260));
   --gradient-card: linear-gradient(160deg, var(--surface-2), var(--surface));
-  --shadow-glow: 0 0 40px oklch(0.65 0.21 255 / 0.35);
+  --shadow-glow: 0 4px 18px color-mix(in oklab, var(--primary) 18%, transparent);
   --shadow-card: 0 10px 30px -10px oklch(0 0 0 / 0.6);
-  --signal-glow: oklch(0.74 0.18 165);
+  --signal-glow: var(--primary);
+  --wheel-deep: oklch(0.42 0.12 255);
 }
 
 .dark { color-scheme: dark; }
@@ -103,7 +104,7 @@
   .glass {
     background: var(--gradient-card);
     backdrop-filter: blur(12px);
-    border: 1px solid oklch(0.4 0.05 260 / 0.4);
+    border: 1px solid var(--border);
   }
   .btn-primary {
     background: var(--gradient-primary);
@@ -122,14 +123,14 @@
 
   .internal-app {
     background:
-      linear-gradient(145deg, color-mix(in oklab, var(--surface) 88%, var(--success) 12%), var(--background) 42%),
+      linear-gradient(145deg, color-mix(in oklab, var(--surface) 92%, var(--primary) 8%), var(--background) 42%),
       var(--background);
     min-height: 100vh;
   }
   .internal-app .glass {
-    background: linear-gradient(155deg, color-mix(in oklab, var(--surface-2) 86%, var(--success) 14%), color-mix(in oklab, var(--surface) 94%, transparent));
-    border-color: color-mix(in oklab, var(--border) 72%, var(--success) 28%);
-    box-shadow: 0 14px 34px -24px color-mix(in oklab, var(--success) 45%, transparent);
+    background: linear-gradient(155deg, color-mix(in oklab, var(--surface-2) 96%, var(--primary) 4%), var(--surface));
+    border-color: var(--border);
+    box-shadow: var(--shadow-card);
   }
   .market-signal {
     position: relative;
@@ -137,15 +138,16 @@
   }
   .market-signal-up { color: var(--success); }
   .market-signal-down { color: var(--destructive); }
-  .market-chart { width: min(100%, 26rem); margin-inline: auto; }
-  .market-arrow { display: block; width: 100%; height: 7rem; overflow: visible; filter: drop-shadow(0 0 6px currentColor); }
+  .market-chart { width: 100%; margin-inline: auto; padding-block: 0.75rem; }
+  .market-arrow { display: block; width: 100%; height: auto; aspect-ratio: 560 / 120; overflow: visible; }
   .market-grid { stroke: currentColor; stroke-opacity: 0.1; stroke-dasharray: 3 5; }
   .market-arrow-line { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;
-    stroke-dasharray: 1400; stroke-dashoffset: 1400; animation: signal-draw-once 2.4s ease-out forwards; }
-  .market-dot { animation: market-jitter 1.6s ease-in-out infinite; }
+    stroke-dasharray: 1400; stroke-dashoffset: 1400; animation: signal-draw-once 1.2s ease-out forwards; }
+  .market-dot { animation: market-jitter 2.8s ease-in-out infinite; }
+  .market-history-point { fill: var(--background); stroke: currentColor; stroke-width: 2; }
   .market-value { font-size: 13px; font-weight: 900; animation: market-jitter 1.6s ease-in-out infinite; }
   @keyframes signal-draw-once { to { stroke-dashoffset: 0; } }
-  @keyframes market-jitter { 0%,100% { transform: translateY(0); } 25% { transform: translateY(-4px); } 60% { transform: translateY(3px); } }
+  @keyframes market-jitter { 0%,100% { transform: translateY(0); } 25% { transform: translateY(-2px); } 60% { transform: translateY(2px); } }
   @media (prefers-reduced-motion: reduce) { .market-arrow-line { animation: none; stroke-dashoffset: 0; } .market-dot, .market-value { animation: none; } }
   .advertisement-frame {
     aspect-ratio: 16 / 7;
@@ -177,9 +179,9 @@
 @layer base {
   h1, h2, h3, .font-display { font-family: 'Noto Sans Arabic', system-ui, sans-serif; letter-spacing: 0; }
 }
-:root { --reward-gold: oklch(0.82 0.15 85); }
+:root { --reward-gold: var(--accent); }
 @theme inline { --color-reward-gold: var(--reward-gold); }
-.wheel-stage { position: relative; width: min(20rem, 86vw); margin: 0 auto; filter: drop-shadow(0 18px 40px oklch(0.82 0.15 85 / 0.25)); }
+.wheel-stage { position: relative; width: min(20rem, 100%); margin: 0 auto; filter: drop-shadow(0 18px 40px color-mix(in oklab, var(--primary) 20%, transparent)); }
 .wheel-pointer { position: absolute; top: -6px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 14px solid transparent; border-right: 14px solid transparent; border-top: 26px solid var(--reward-gold); z-index: 2; }
 .reward-wheel { width: 100%; height: auto; transition: transform 4.5s cubic-bezier(0.17, 0.67, 0.12, 1); }
 @media (prefers-reduced-motion: reduce) { .reward-wheel { transition: none; } }
@@ -188,8 +190,18 @@
 .wheel-tone-0 path { fill: var(--primary); }
 .wheel-tone-1 path { fill: var(--surface-2); }
 .wheel-tone-2 path { fill: var(--accent); }
-.wheel-tone-3 path { fill: oklch(0.45 0.12 160); }
+.wheel-tone-3 path { fill: var(--wheel-deep); }
 .wheel-label { fill: var(--foreground); font-size: 13px; font-weight: 700; }
 .wheel-hub { fill: var(--background); stroke: var(--reward-gold); stroke-width: 4; }
 .wheel-brand { fill: var(--reward-gold); font-size: 14px; font-weight: 800; }
 .reward-input { width: 100%; background: var(--input); border: 1px solid var(--border); border-radius: 0.75rem; padding: 0.6rem 0.9rem; }
+.client-header { background: color-mix(in oklab, var(--background) 94%, transparent); backdrop-filter: blur(16px); }
+.client-navigation { background: color-mix(in oklab, var(--surface) 96%, transparent); border: 1px solid var(--border); box-shadow: var(--shadow-card); overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+.client-navigation::-webkit-scrollbar { display: none; }
+.navigation-item { transition: background-color 180ms ease, color 180ms ease; }
+.navigation-item[aria-current="page"]::after { content: ""; position: absolute; top: 3px; width: 14px; height: 2px; border-radius: 2px; background: var(--primary); }
+.client-content { animation: content-enter 180ms ease-out; }
+.reward-input:focus { outline: 2px solid var(--primary); outline-offset: 2px; }
+@keyframes content-enter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 380px) { .client-header { flex-wrap: wrap; } .client-header > :last-child { margin-inline-start: auto; } }
+@media (prefers-reduced-motion: reduce) { .client-content { animation: none; } .navigation-item { transition: none; } }

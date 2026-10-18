@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { Home, ArrowDownToLine, ArrowUpFromLine, MapPin, Package, Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, Wallet, AlertTriangle, Info, ChevronUp, ChevronDown, X, Bell, Gift } from "lucide-react";
+import { House as Home, ArrowDownLeft as ArrowDownToLine, ArrowUpRight as ArrowUpFromLine, MapPinned as MapPin, Layers3 as Package, UsersRound as Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, WalletCards as Wallet, AlertTriangle, Info, ChevronUp, ChevronDown, X, BellRing as Bell, Sparkles as Gift } from "lucide-react";
 import { toast } from "sonner";
 import type { Role } from "@/lib/auth";
 import { requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { requestWithdrawal } from "@/lib/withdrawal.functions";
 import { BrandLogo } from "@/components/brand-logo";
 import { RewardsClient } from "@/components/rewards-client";
+import { MarketIndicator, type SignalPoint } from "@/components/market-indicator";
 
 type Tab = "home" | "deposit" | "withdraw" | "local" | "shop" | "referral" | "notifications" | "rewards";
 
@@ -71,7 +72,7 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
   return (
     <div className="internal-app min-h-screen pb-24">
       <SupportChat />
-      <header className="sticky top-0 z-20 px-4 py-3 glass border-b border-border flex items-center justify-between gap-2">
+      <header className="client-header sticky top-0 z-20 px-4 py-3 border-b border-border flex items-center justify-between gap-2">
         <BrandLogo className="h-8 w-8" />
         <div className="flex items-center gap-2">
           <HelpButton />
@@ -88,27 +89,27 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
               <Shield className="w-3.5 h-3.5 text-primary" /> وكيل
             </Link>
           )}
-          <button onClick={logout} title="خروج" className="glass p-2 rounded-lg"><LogOut className="w-4 h-4" /></button>
+          <Button variant="ghost" size="icon" onClick={logout} title="خروج" aria-label="خروج"><LogOut className="w-4 h-4" /></Button>
         </div>
       </header>
 
       <ClientNotifications />
 
-      <main className="max-w-2xl mx-auto px-4 py-4">{tab === "notifications" ? <NotificationsTab onRead={() => setUnread(0)} /> : tab === "rewards" ? <RewardsTab /> : children(tab)}</main>
+      <main key={tab} className="client-content max-w-2xl mx-auto px-4 py-4">{tab === "notifications" ? <NotificationsTab onRead={() => setUnread(0)} /> : tab === "rewards" ? <RewardsTab /> : children(tab)}</main>
 
-      <nav className="fixed bottom-3 left-3 right-3 max-w-2xl mx-auto glass rounded-2xl p-2 flex justify-around z-30">
+      <nav aria-label="أقسام الحساب" className="client-navigation fixed bottom-3 left-3 right-3 max-w-2xl mx-auto rounded-xl p-1.5 flex z-30">
         {TABS.filter(t => visibleTabs[t.id]).map(t => {
           const Icon = t.icon;
           const active = tab === t.id;
           return (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              className={`relative flex flex-col items-center gap-0.5 px-2 py-2 rounded-xl transition ${active ? "btn-primary" : "text-muted-foreground"}`}>
-              <Icon className="w-4 h-4" />
-              <span className="text-[10px] font-bold">{t.label}</span>
+            <Button variant="ghost" key={t.id} onClick={() => setTab(t.id)} aria-current={active ? "page" : undefined} title={t.label}
+              className={`navigation-item relative h-14 min-w-16 flex-1 shrink-0 flex-col gap-1 rounded-lg px-1 py-2 ${active ? "bg-primary/15 text-primary hover:bg-primary/20 hover:text-primary" : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`}>
+              <Icon className="size-5" strokeWidth={active ? 2.2 : 1.7} />
+              <span className="text-[10px] font-semibold">{t.label}</span>
               {t.id === "notifications" && unread > 0 && (
                 <span className="absolute -top-1 right-0 min-w-4 h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-black leading-4">{unread > 99 ? "99+" : unread}</span>
               )}
-            </button>
+            </Button>
           );
         })}
       </nav>
@@ -120,9 +121,9 @@ function RewardsTab() {
   const [mode, setMode] = useState<"wheel" | "tasks">("wheel");
   return (
     <div className="space-y-4">
-      <div className="glass rounded-2xl p-2 flex">
-        <button onClick={() => setMode("wheel")} className={`flex-1 py-2.5 rounded-xl font-bold text-sm ${mode === "wheel" ? "btn-primary" : "text-muted-foreground"}`}>عجلة الربح</button>
-        <button onClick={() => setMode("tasks")} className={`flex-1 py-2.5 rounded-xl font-bold text-sm ${mode === "tasks" ? "btn-primary" : "text-muted-foreground"}`}>المهام</button>
+      <div className="border-b border-border pb-3 flex gap-2">
+        <Button onClick={() => setMode("wheel")} variant={mode === "wheel" ? "default" : "ghost"} className="flex-1"><Gift />عجلة الربح</Button>
+        <Button onClick={() => setMode("tasks")} variant={mode === "tasks" ? "default" : "ghost"} className="flex-1"><Package />المهام</Button>
       </div>
       <RewardsClient key={mode} mode={mode} />
     </div>
@@ -170,57 +171,6 @@ function ClientNotifications() {
         </button>
         <span className="notification-timer absolute inset-x-0 bottom-0 h-0.5 bg-primary" />
       </div>
-    </div>
-  );
-}
-
-type SignalPoint = { d: string; dir: "up" | "down"; v: number | null };
-
-function MarketArrow({ direction, history, value }: { direction: "up" | "down"; history: SignalPoint[]; value: string }) {
-  // build up to 7 days; each day contributes intraday wiggles then ends in its direction
-  const days: SignalPoint[] = history.length ? history.slice(-7) : [{ d: "", dir: direction, v: null }];
-  const ys: number[] = [0];
-  let level = 0;
-  days.forEach((day, i) => {
-    const step = day.v != null && i > 0 && days[i - 1].v != null ? Math.sign(day.v - (days[i - 1].v as number)) || (day.dir === "up" ? 1 : -1) : (day.dir === "up" ? 1 : -1);
-    const s = day.dir === "up" ? Math.abs(step) : -Math.abs(step);
-    ys.push(level - s * 0.4, level + s * 0.6, level + s * 0.3);
-    level += s;
-    ys.push(level);
-  });
-  const min = Math.min(...ys), max = Math.max(...ys);
-  const W = 340, H = 110, pad = 14;
-  const pts = ys.map((y, i) => [pad + (i / (ys.length - 1)) * (W - pad * 2), H - pad - ((y - min) / (max - min || 1)) * (H - pad * 2)]);
-  const d = pts.map((p, i) => `${i ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
-  const area = `${d} L${pts[pts.length - 1][0]} ${H} L${pts[0][0]} ${H} Z`;
-  const last = pts[pts.length - 1];
-  const id = `sig-${direction}`;
-  return (
-    <div className="market-chart">
-      <svg className="market-arrow" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={direction === "up" ? "اتجاه مرتفع" : "اتجاه منخفض"}>
-        <defs>
-          <linearGradient id={`${id}-fill`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="currentColor" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
-          </linearGradient>
-          <marker id={`${id}-head`} markerWidth="8" markerHeight="8" refX="5" refY="4" orient="auto" markerUnits="strokeWidth">
-            <path d="M0,0 L8,4 L0,8 Z" fill="currentColor" />
-          </marker>
-        </defs>
-        {[0.25, 0.5, 0.75].map(f => <line key={f} x1="0" x2={W} y1={H * f} y2={H * f} className="market-grid" />)}
-        <path d={area} fill={`url(#${id}-fill)`} />
-        <path className="market-arrow-line" d={d} markerEnd={`url(#${id}-head)`} />
-        <g className="market-dot" style={{ transformOrigin: `${last[0]}px ${last[1]}px` }}>
-          <circle cx={last[0]} cy={last[1]} r="9" fill="currentColor" opacity="0.25" />
-          <circle cx={last[0]} cy={last[1]} r="4" fill="currentColor" />
-        </g>
-        {value && <text x={Math.min(last[0], W - 40)} y={Math.max(last[1] - 14, 12)} textAnchor="middle" className="market-value" fill="currentColor">{value}</text>}
-      </svg>
-      {history.length > 1 && (
-        <div className="flex justify-between px-2 text-[10px] font-bold opacity-80">
-          {days.map(day => <span key={day.d} className={day.dir === "up" ? "text-success" : "text-destructive"}>{day.dir === "up" ? "▲" : "▼"} {day.d.slice(5)}</span>)}
-        </div>
-      )}
     </div>
   );
 }
@@ -412,7 +362,7 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
 
       {marketSignal?.enabled && (
         <div className={`market-signal -mt-2 text-center ${marketSignal.direction === "up" ? "market-signal-up" : "market-signal-down"}`}>
-          <MarketArrow direction={marketSignal.direction} history={marketSignal.history} value={marketSignal.value} />
+          <MarketIndicator direction={marketSignal.direction} history={marketSignal.history} value={marketSignal.value} />
           {marketSignal.text.trim() && <div className="-mt-1 whitespace-pre-wrap text-lg font-black" dir="auto">{marketSignal.text}</div>}
         </div>
       )}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Globe2 } from "lucide-react";
 
 export type Lang = "ar" | "en" | "fr" | "tr";
 
@@ -41,31 +42,23 @@ export function LanguageSwitch({ className = "" }: { className?: string }) {
   if (!mounted) {
     return (
       <div
-        className={`inline-flex gap-1 rounded-full border border-white/10 bg-white/5 backdrop-blur-md p-1 ${className}`}
+        className={`inline-flex h-9 w-20 ${className}`}
         suppressHydrationWarning
       />
     );
   }
 
   return (
-    <div
-      className={`inline-flex gap-1 rounded-full border border-white/10 bg-white/5 backdrop-blur-md p-1 ${className}`}
+    <label
+      className={`inline-flex h-9 items-center gap-1 rounded-md border border-border bg-secondary/30 px-2 ${className}`}
       translate="no"
       suppressHydrationWarning
     >
-      {LANGS.map(l => (
-        <button
-          key={l.code}
-          onClick={() => pick(l.code)}
-          translate="no"
-          className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition ${
-            current === l.code ? "bg-white/15 text-foreground" : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          {l.label}
-        </button>
-      ))}
-    </div>
+      <Globe2 className="size-3.5 text-primary" />
+      <select aria-label="اللغة" value={current} onChange={e => pick(e.target.value as Lang)} className="min-w-0 bg-transparent text-[11px] font-semibold text-foreground outline-none">
+        {LANGS.map(l => <option className="bg-popover text-popover-foreground" key={l.code} value={l.code}>{l.label}</option>)}
+      </select>
+    </label>
   );
 }
 
