@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { getRewards, spinWheel, submitTask, type Prize, type Task, type Submission, type Spin } from "@/lib/rewards.functions";
 import { compressProof } from "@/lib/proof-image";
+import { wheelAudienceLabels } from "@/lib/wheel-audience";
 
 type Data = Awaited<ReturnType<typeof getRewards>>;
 export function RewardsClient({ mode, onCredit }: { mode: "wheel" | "tasks"; onCredit?: () => void }) {
@@ -33,7 +34,7 @@ function Wheel({ data, reload, onCredit }: { data: Data; reload: () => Promise<v
     if (index < 0) return;
     setRotation((360 - (index + 0.5) * (360 / prizes.length) + 360) % 360);
   }, [previous?.id, data.round?.id]);
-  const canSpin = data.visible && data.active && data.round?.is_open && !previous && !result && !busy;
+  const canSpin = data.visible && data.active && data.eligible && data.round?.is_open && !previous && !result && !busy;
   const turn = async () => {
     if (!canSpin || !data.round) return;
     setBusy(true);
@@ -52,6 +53,8 @@ function Wheel({ data, reload, onCredit }: { data: Data; reload: () => Promise<v
   return <section className="text-center space-y-6 py-2">
     <div className="flex justify-center items-center gap-2 text-reward-gold text-xs font-bold"><Gift className="size-4" />POLONE REWARDS</div>
     <h1 className="text-3xl font-extrabold">عجلة الربح</h1>
+    {data.round && <p className="text-sm font-semibold text-primary">{wheelAudienceLabels[data.round.audience] ?? wheelAudienceLabels.all}</p>}
+    {data.active && data.round?.is_open && !data.eligible && !previous && <p role="status" className="text-sm text-muted-foreground">{data.round.audience === "referral" ? "بانتظار تسجيل عضو جديد برمز إحالتك في هذه الجولة" : data.round.audience === "welcome" ? "هذه الجولة مخصصة للحسابات الجديدة المؤهلة للبونص الترحيبي" : "هذه الجولة غير مخصصة لحسابك"}</p>}
     <p className="text-sm text-muted-foreground">{shown ? "استخدمت محاولتك في هذه الجولة" : data.round?.is_open ? "محاولة واحدة في الجولة الحالية" : "بانتظار فتح جولة جديدة"}</p>
     {prizes.length > 0 && <div className="wheel-stage"><div className="wheel-pointer" /><svg className="reward-wheel" viewBox="0 0 360 360" role="img" aria-label="عجلة جوائز Polone" style={{ transform: `rotate(${rotation}deg)` }}><circle cx="180" cy="180" r="175" className="wheel-rim" />{prizes.map((prize, index) => <WheelSlice key={prize.id} prize={prize} index={index} count={prizes.length} />)}<circle cx="180" cy="180" r="38" className="wheel-hub" /><text x="180" y="184" textAnchor="middle" className="wheel-brand">polone</text></svg></div>}
     {shown && <div role="status" className="py-4 border-y border-reward-gold/30 space-y-2"><Trophy className="mx-auto text-reward-gold" /><p className="font-bold text-lg">{shown.label}</p><p className="text-3xl font-extrabold text-reward-gold" dir="ltr">{shown.amount} <span className="text-sm">USDT</span></p></div>}

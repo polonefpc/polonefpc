@@ -144,6 +144,13 @@
   .market-arrow-line { fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;
     stroke-dasharray: 1400; stroke-dashoffset: 1400; animation: signal-draw-once 1.2s ease-out forwards; }
   .market-dot { animation: market-jitter 2.8s ease-in-out infinite; }
+  .market-end-halo { fill: currentColor; opacity: 0.15; }
+  .market-end-chevron { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .market-direction-motion { animation: market-rise 2.4s ease-in-out infinite; }
+  .market-chart[data-direction="down"] .market-direction-motion { animation-name: market-fall; }
+  @keyframes market-rise { 0%,100% { transform: translateY(2px); } 55% { transform: translateY(-5px); } }
+  @keyframes market-fall { 0%,100% { transform: translateY(-2px); } 55% { transform: translateY(5px); } }
+  @media (prefers-reduced-motion: reduce) { .market-direction-motion { animation: none; } }
   .market-history-point { fill: var(--background); stroke: currentColor; stroke-width: 2; }
   .market-value { font-size: 13px; font-weight: 900; animation: market-jitter 1.6s ease-in-out infinite; }
   @keyframes signal-draw-once { to { stroke-dashoffset: 0; } }

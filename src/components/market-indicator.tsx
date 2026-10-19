@@ -28,7 +28,7 @@ export function MarketIndicator({ direction, history, value }: { direction: "up"
   const selected = hovered == null ? null : days[hovered];
   const Trend = direction === "up" ? TrendingUp : TrendingDown;
 
-  return <div className="market-chart">
+  return <div className="market-chart" data-direction={direction}>
     <div className="flex min-h-10 items-center justify-between gap-3 text-start">
       <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground"><Trend className="size-4" /><span>حركة الأسبوع</span></div>
       <div className="min-w-0 text-end"><span className="block truncate text-lg font-bold tabular-nums" dir="auto">{selected ? selected.v ?? "—" : value || "—"}</span><span className="text-[10px] text-muted-foreground">{selected?.d || "آخر تحديث"}</span></div>
@@ -39,7 +39,7 @@ export function MarketIndicator({ direction, history, value }: { direction: "up"
       <path d={`${path} L 542 118 L 18 118 Z`} fill={`url(#${id}-fill)`} />
       <path key={path} d={path} className="market-arrow-line" />
       {days.map((day, i) => { const point = points[days.length === 1 ? 1 : i]; return <g key={`${day.d}-${i}`} onPointerEnter={() => setHovered(i)}><circle cx={point.x} cy={point.y} r="16" fill="transparent" /><circle cx={point.x} cy={point.y} r={hovered === i ? 5 : 2.5} className="market-history-point" /><title>{day.d}: {day.v ?? (day.dir === "up" ? "صاعد" : "نازل")}</title></g>; })}
-      <g className="market-dot"><circle cx={last.x} cy={last.y} r="9" fill="currentColor" opacity="0.16" /><circle cx={last.x} cy={last.y} r="4" fill="currentColor" /></g>
+      <g transform={`translate(${last.x} ${last.y})`}><g className="market-direction-motion"><circle r="10" className="market-end-halo" /><circle r="4" fill="currentColor" /><path d={direction === "up" ? "M -5 -13 L 0 -18 L 5 -13" : "M -5 13 L 0 18 L 5 13"} className="market-end-chevron" /></g></g>
     </svg>
     {history.length > 1 && <div className="flex justify-between gap-1 text-[10px] tabular-nums text-muted-foreground" dir="ltr">{days.map(day => <span key={day.d}>{day.d.slice(5)}</span>)}</div>}
   </div>;
