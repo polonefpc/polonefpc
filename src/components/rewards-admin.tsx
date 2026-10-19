@@ -3,6 +3,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getRewardsAdmin, manageRewards } from "@/lib/rewards.functions";
+import { Button } from "@/components/ui/button";
+import { WheelAudienceAdmin } from "@/components/wheel-audience-admin";
+import { wheelAudienceLabels } from "@/lib/wheel-audience";
 
 type AdminData = Awaited<ReturnType<typeof getRewardsAdmin>>;
 const box = "glass rounded-xl p-3 space-y-2";
@@ -28,6 +31,7 @@ export function RewardsAdmin() {
   const name = (id: string) => { const u: any = d.users.find((x: any) => x.id === id); return u ? `${u.full_name || "—"} #${u.referral_code}` : id.slice(0, 8); };
   const activeUsers = d.users.filter((u: any) => u.is_active && (!assign.q || `${u.full_name} ${u.referral_code}`.includes(assign.q)));
   const roundPrizes = d.round?.prizes ?? [];
+  const roundId = d.round?.id;
 
   return (
     <div className="space-y-4">
@@ -38,12 +42,12 @@ export function RewardsAdmin() {
         </label>
         <div className="text-sm">
           الجولة الحالية: {d.round?.is_open ? <span className="text-success font-bold">مفتوحة</span> : <span className="text-muted-foreground">مغلقة</span>}
-          {d.round && <span className="text-xs text-muted-foreground"> · {new Date(d.round.created_at).toLocaleString("ar")} · لعب {d.spins.filter(s => s.round_id === d.round!.id).length}</span>}
+          {d.round && <span className="text-xs text-muted-foreground"> · {wheelAudienceLabels[d.round.audience] ?? wheelAudienceLabels.all} · {new Date(d.round.created_at).toLocaleString("ar")} · لعب {d.spins.filter(s => s.round_id === roundId).length}</span>}
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button onClick={() => act({ action: "open" }, "تم فتح جولة جديدة — كل حساب مفعل له محاولة واحدة")} className="btn-primary px-3 py-1.5 rounded-lg text-sm font-bold">تشغيل جولة جديدة</button>
-          {d.round?.is_open && <button onClick={() => act({ action: "close", id: d.round!.id }, "تم إغلاق الجولة")} className="glass px-3 py-1.5 rounded-lg text-sm">إغلاق الجولة</button>}
+          {d.round?.is_open && <Button variant="outline" onClick={() => act({ action: "close", id: roundId }, "تم إغلاق الجولة")}>إغلاق الجولة</Button>}
         </div>
+        <WheelAudienceAdmin users={d.users} onOpen={(audience, userIds) => act({ action: "open", audience, userIds }, "تم فتح الجولة بالنوع المحدد")} />
         <p className="text-xs text-muted-foreground">يجب أن يكون مجموع نسب الفوز للأقسام الفعالة 100% (الحالي: {total}%) ومن 2 إلى 12 قسماً.</p>
       </div>
 
@@ -76,8 +80,8 @@ export function RewardsAdmin() {
             <option value="">اختر الجائزة</option>
             {roundPrizes.map(p => <option key={p.id} value={p.id}>{p.label} — {p.amount} USDT</option>)}
           </select>
-          <button disabled={!assign.userId || !assign.prizeId} onClick={() => act({ action: "assign", roundId: d.round!.id, userId: assign.userId, prizeId: assign.prizeId }, "سيفوز هذا الحساب بالجائزة المحددة")} className="btn-primary px-3 py-1.5 rounded-lg text-sm font-bold">تحديد</button>
-          {d.assignments.filter((a: any) => a.round_id === d.round!.id).map((a: any) => (
+          <Button disabled={!assign.userId || !assign.prizeId} onClick={() => act({ action: "assign", roundId, userId: assign.userId, prizeId: assign.prizeId }, "سيفوز هذا الحساب بالجائزة المحددة")}>تحديد</Button>
+          {d.assignments.filter((a: any) => a.round_id === roundId).map((a: any) => (
             <div key={a.user_id} className="text-xs text-muted-foreground">{name(a.user_id)} ← {roundPrizes.find(p => p.id === a.prize_id)?.label}</div>
           ))}
         </div>

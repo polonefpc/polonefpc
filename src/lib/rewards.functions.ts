@@ -1,9 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import type { WheelAudience } from "@/lib/wheel-audience";
 
 export type Prize = { id: string; label: string; amount: number; weight: number };
-export type RewardRound = { id: string; is_open: boolean; created_at: string; prizes: Prize[] };
+export type RewardRound = { id: string; is_open: boolean; created_at: string; prizes: Prize[]; audience: WheelAudience };
 export type Task = { id: string; title: string; description: string; share_url: string; reward: number; is_active: boolean };
 export type Submission = { id: string; task_id: string; user_id: string; links: string[]; proof_image?: string; reward: number; status: string; admin_note: string; created_at: string };
 export type Spin = { id: string; round_id: string; user_id: string; prize_id: string; label: string; amount: number; created_at: string };
@@ -21,7 +22,10 @@ export const getRewards = createServerFn({ method: "GET" }).middleware([requireS
     db.from("profiles").select("is_active").eq("id", context.userId).single(),
   ]);
   for (const result of results) if (result.error) throw new Error(result.error.message);
-  return { visible: results[0].data?.value === "true", round: results[1].data as unknown as RewardRound | null, spins: results[2].data as Spin[], tasks: results[3].data as Task[], submissions: results[4].data as Submission[], active: results[5].data?.is_active === true };
+  const round = results[1].data as unknown as RewardRound | null;
+  const eligibility = round ? await db.rpc("wheel_round_eligible", { _round_id: round.id }) : null;
+  if (eligibility?.error) throw new Error(eligibility.error.message);
+  return { visible: results[0].data?.value === "true", round, eligible: eligibility?.data === true, spins: results[2].data as Spin[], tasks: results[3].data as Task[], submissions: results[4].data as Submission[], active: results[5].data?.is_active === true };
 });
 
 export const spinWheel = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(z.object({ roundId: uuid })).handler(async ({ context, data }) => {
@@ -55,7 +59,7 @@ const actionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("prize"), id: uuid.optional(), label: z.string().trim().min(1).max(80), amount, weight: z.coerce.number().min(0).max(100), is_active: z.boolean(), sort_order: z.number().int() }),
   z.object({ action: z.literal("deletePrize"), id: uuid }),
   z.object({ action: z.literal("visible"), value: z.boolean() }),
-  z.object({ action: z.literal("open") }),
+  z.object({ action: z.literal("open"), audience: z.enum(["all", "welcome", "referral", "selected"]).default("all"), userIds: z.array(uuid).max(10000).default([]) }),
   z.object({ action: z.literal("close"), id: uuid }),
   z.object({ action: z.literal("assign"), roundId: uuid, userId: uuid, prizeId: uuid }),
   z.object({ action: z.literal("task"), id: uuid.optional(), title: z.string().trim().min(1).max(120), description: z.string().max(4000), share_url: z.string().url().regex(/^https?:\/\//), reward: amount, is_active: z.boolean() }),
@@ -70,7 +74,7 @@ export const manageRewards = createServerFn({ method: "POST" }).middleware([requ
     case "prize": { const { action: _, id, ...values } = data; const r = id ? await db.from("wheel_prizes").update(values).eq("id", id) : await db.from("wheel_prizes").insert(values); error = r.error; break; }
     case "deletePrize": error = (await db.from("wheel_prizes").delete().eq("id", data.id)).error; break;
     case "visible": error = (await db.from("settings").upsert({ key: "wheel_visible", value: String(data.value) })).error; break;
-    case "open": error = (await db.rpc("open_wheel_round")).error; break;
+    case "open": error = (await db.rpc("open_targeted_wheel_round", { _audience: data.audience, _users: data.userIds })).error; break;
     case "close": { const { supabaseAdmin } = await import("@/integrations/supabase/client.server"); error = (await supabaseAdmin.from("wheel_rounds").update({ is_open: false }).eq("id", data.id)).error; break; }
     case "assign": error = (await db.rpc("assign_wheel_prize", { _round_id: data.roundId, _user_id: data.userId, _prize_id: data.prizeId })).error; break;
     case "task": { const { action: _, id, ...values } = data; const r = id ? await db.from("publication_tasks").update(values).eq("id", id) : await db.from("publication_tasks").insert(values); error = r.error; break; }

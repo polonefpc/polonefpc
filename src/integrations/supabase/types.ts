@@ -874,20 +874,53 @@ export type Database = {
         }
         Relationships: []
       }
+      wheel_recipients: {
+        Row: {
+          round_id: string
+          user_id: string
+        }
+        Insert: {
+          round_id: string
+          user_id: string
+        }
+        Update: {
+          round_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wheel_recipients_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "wheel_rounds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wheel_recipients_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wheel_rounds: {
         Row: {
+          audience: string
           created_at: string
           id: string
           is_open: boolean
           prizes: Json
         }
         Insert: {
+          audience?: string
           created_at?: string
           id?: string
           is_open?: boolean
           prizes: Json
         }
         Update: {
+          audience?: string
           created_at?: string
           id?: string
           is_open?: boolean
@@ -1028,6 +1061,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      open_targeted_wheel_round: {
+        Args: { _audience: string; _users?: string[] }
+        Returns: string
+      }
       open_wheel_round: { Args: never; Returns: string }
       process_transfer_points: {
         Args: { _amount: number; _from_user: string; _to_code: string }
@@ -1077,6 +1114,19 @@ export type Database = {
         Args: { _links: string[]; _proof_image: string; _task_id: string }
         Returns: string
       }
+      wheel_audience_eligible: {
+        Args: {
+          _active: boolean
+          _created: string
+          _mode: string
+          _referral: boolean
+          _selected: boolean
+          _started: string
+          _welcome_claimed: boolean
+        }
+        Returns: boolean
+      }
+      wheel_round_eligible: { Args: { _round_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "agent" | "user"

@@ -15,6 +15,13 @@
       "when": 1792019316833,
       "tag": "0001_live_support_and_network_withdrawals",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792375188577,
+      "tag": "0002_targeted_wheel_round_eligibility",
+      "breakpoints": true
     }
   ]
 }
