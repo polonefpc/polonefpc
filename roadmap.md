@@ -1,5 +1,9 @@
 # Roadmap
 
+- [ ] Animate the market indicator in its selected upward/downward direction
+- [ ] Add configurable welcome, referral and selected-account wheel rounds with secure eligibility
+- [ ] Test wheel eligibility and verify customer/admin controls
+
 - [x] Change the visual theme to blue and modernize navigation icons
 - [x] Refresh the weekly market indicator and smooth interface transitions
 - [x] Verify customer/admin views and small-screen layout without horizontal overflow
