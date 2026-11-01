@@ -13,11 +13,11 @@ export function MarketIndicator({ direction, history, value }: { direction: "up"
     level = day.v != null && Number.isFinite(day.v) ? day.v : level + (day.dir === "up" ? 1 : -1);
     return level;
   });
+  const base = Math.max(Math.max(...values) - Math.min(...values), Math.abs(values[values.length - 1]) * 0.01, 1);
+  values.push(values[values.length - 1] + (direction === "up" ? 1 : -1) * base * 0.6);
   const low = Math.min(...values), high = Math.max(...values);
   const spread = high - low || Math.max(Math.abs(high) * 0.01, 1);
   const points = values.map((v, i) => ({ x: 18 + i / Math.max(values.length - 1, 1) * 524, y: 98 - (v - low) / spread * 62 }));
-  if (points.length === 1) points.unshift({ x: 18, y: 70 });
-  if (days.length === 1) points[1] = { ...points[1], x: 542 };
   const path = points.map((point, i) => {
     if (!i) return `M ${point.x} ${point.y}`;
     const prev = points[i - 1];
@@ -36,10 +36,10 @@ export function MarketIndicator({ direction, history, value }: { direction: "up"
     <svg className="market-arrow" viewBox="0 0 560 120" role="img" aria-label={direction === "up" ? "حركة السوق الأسبوعية — صاعد" : "حركة السوق الأسبوعية — نازل"} onPointerLeave={() => setHovered(null)}>
       <defs><linearGradient id={`${id}-fill`} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="currentColor" stopOpacity="0.18" /><stop offset="100%" stopColor="currentColor" stopOpacity="0" /></linearGradient></defs>
       {[36, 67, 98].map(y => <line key={y} x1="18" x2="542" y1={y} y2={y} className="market-grid" />)}
-      <path d={`${path} L 542 118 L 18 118 Z`} fill={`url(#${id}-fill)`} />
-      <path key={path} d={path} className="market-arrow-line" />
-      {days.map((day, i) => { const point = points[days.length === 1 ? 1 : i]; return <g key={`${day.d}-${i}`} onPointerEnter={() => setHovered(i)}><circle cx={point.x} cy={point.y} r="16" fill="transparent" /><circle cx={point.x} cy={point.y} r={hovered === i ? 5 : 2.5} className="market-history-point" /><title>{day.d}: {day.v ?? (day.dir === "up" ? "صاعد" : "نازل")}</title></g>; })}
-      <g transform={`translate(${last.x} ${last.y})`}><g className="market-direction-motion"><circle r="10" className="market-end-halo" /><circle r="4" fill="currentColor" /><path d={direction === "up" ? "M -5 -13 L 0 -18 L 5 -13" : "M -5 13 L 0 18 L 5 13"} className="market-end-chevron" /></g></g>
+      <g className="market-trend"><path d={`${path} L 542 118 L 18 118 Z`} fill={`url(#${id}-fill)`} />
+      <path key={`${direction}-${path}`} d={path} className="market-arrow-line" />
+      {days.map((day, i) => { const point = points[i]; return <g key={`${day.d}-${i}`} onPointerEnter={() => setHovered(i)}><circle cx={point.x} cy={point.y} r="16" fill="transparent" /><circle cx={point.x} cy={point.y} r={hovered === i ? 5 : 2.5} className="market-history-point" /><title>{day.d}: {day.v ?? (day.dir === "up" ? "صاعد" : "نازل")}</title></g>; })}
+      <g transform={`translate(${last.x} ${last.y})`}><g className="market-direction-motion"><circle r="10" className="market-end-halo" /><circle r="4" fill="currentColor" /><path d={direction === "up" ? "M -5 -13 L 0 -18 L 5 -13" : "M -5 13 L 0 18 L 5 13"} className="market-end-chevron" /></g></g></g>
     </svg>
     {history.length > 1 && <div className="flex justify-between gap-1 text-[10px] tabular-nums text-muted-foreground" dir="ltr">{days.map(day => <span key={day.d}>{day.d.slice(5)}</span>)}</div>}
   </div>;

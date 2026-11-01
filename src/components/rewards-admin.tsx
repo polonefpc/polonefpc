@@ -115,7 +115,7 @@ export function RewardsAdmin() {
           <div key={s.id} className="border-t border-border pt-2 space-y-2 text-sm">
             <div className="flex justify-between"><b>{name(s.user_id)}</b><span className={s.status === "approved" ? "text-success" : s.status === "rejected" ? "text-destructive" : "text-reward-gold"}>{s.status === "approved" ? "مقبول" : s.status === "rejected" ? "مرفوض" : "قيد المراجعة"}</span></div>
             <div className="text-xs">{d.tasks.find(t => t.id === s.task_id)?.title} · {s.reward} USDT · {new Date(s.created_at).toLocaleString("ar")}</div>
-            {s.links.map(l => <a key={l} href={l} target="_blank" rel="noopener noreferrer" dir="ltr" className="block text-xs text-primary break-all underline">{l}</a>)}
+            {s.links.map((l, i) => /^https?:\/\/\S+$/.test(l) ? <a key={i} href={l} target="_blank" rel="noopener noreferrer" dir="ltr" className="block text-xs text-primary break-all underline">{l}</a> : <p key={i} dir="auto" className="whitespace-pre-wrap break-words rounded-lg bg-secondary p-2 text-xs">{l}</p>)}
             {s.proof_image && <a href={s.proof_image} target="_blank" rel="noreferrer"><img src={s.proof_image} alt="إثبات" className="max-h-48 rounded-lg" /></a>}
             {s.status === "pending" && (
               <div className="flex gap-2">

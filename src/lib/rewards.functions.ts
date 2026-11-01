@@ -33,7 +33,7 @@ export const spinWheel = createServerFn({ method: "POST" }).middleware([requireS
   if (result.error) throw new Error(result.error.message);
   return result.data as unknown as Spin;
 });
-export const submitTask = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(z.object({ taskId: uuid, links: z.array(z.string().url().max(2048).regex(/^https?:\/\//)).min(1).max(10), proof: z.string().max(1100000).regex(/^data:image\/jpeg;base64,/) })).handler(async ({ context, data }) => {
+export const submitTask = createServerFn({ method: "POST" }).middleware([requireSupabaseAuth]).inputValidator(z.object({ taskId: uuid, links: z.array(z.string().trim().min(1).max(2000)).min(1).max(10), proof: z.string().max(1100000).regex(/^data:image\/jpeg;base64,/) })).handler(async ({ context, data }) => {
   const result = await context.supabase.rpc("submit_publication_task", { _task_id: data.taskId, _links: data.links, _proof_image: data.proof });
   if (result.error) throw new Error(result.error.message);
   return { id: result.data };

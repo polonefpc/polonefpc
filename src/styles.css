@@ -151,6 +151,11 @@
   @keyframes market-rise { 0%,100% { transform: translateY(2px); } 55% { transform: translateY(-5px); } }
   @keyframes market-fall { 0%,100% { transform: translateY(-2px); } 55% { transform: translateY(5px); } }
   @media (prefers-reduced-motion: reduce) { .market-direction-motion { animation: none; } }
+  .market-trend { animation: market-trend-up 3.2s ease-in-out infinite; }
+  .market-chart[data-direction="down"] .market-trend { animation-name: market-trend-down; }
+  @keyframes market-trend-up { 0%,100% { transform: translateY(3px); } 50% { transform: translateY(-4px); } }
+  @keyframes market-trend-down { 0%,100% { transform: translateY(-3px); } 50% { transform: translateY(4px); } }
+  @media (prefers-reduced-motion: reduce) { .market-trend { animation: none; } }
   .market-history-point { fill: var(--background); stroke: currentColor; stroke-width: 2; }
   .market-value { font-size: 13px; font-weight: 900; animation: market-jitter 1.6s ease-in-out infinite; }
   @keyframes signal-draw-once { to { stroke-dashoffset: 0; } }
