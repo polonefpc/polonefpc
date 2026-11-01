@@ -651,6 +651,30 @@ export type Database = {
         }
         Relationships: []
       }
+      support_auto_replies: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          is_active: boolean
+          reply: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          reply: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          reply?: string
+        }
+        Relationships: []
+      }
       support_conversations: {
         Row: {
           category: string
@@ -692,6 +716,8 @@ export type Database = {
           conversation_id: string
           created_at: string
           id: string
+          image: string | null
+          is_auto: boolean
           sender_id: string
         }
         Insert: {
@@ -699,6 +725,8 @@ export type Database = {
           conversation_id: string
           created_at?: string
           id?: string
+          image?: string | null
+          is_auto?: boolean
           sender_id: string
         }
         Update: {
@@ -706,6 +734,8 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           id?: string
+          image?: string | null
+          is_auto?: boolean
           sender_id?: string
         }
         Relationships: [
