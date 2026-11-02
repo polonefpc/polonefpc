@@ -236,6 +236,33 @@ export type Database = {
         }
         Relationships: []
       }
+      earning_logs: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          note: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          note?: string
+          source: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          note?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       help_sections: {
         Row: {
           created_at: string
@@ -339,18 +366,21 @@ export type Database = {
       }
       notifications: {
         Row: {
+          audience: string
           created_at: string
           id: string
           message: string
           target_user_id: string | null
         }
         Insert: {
+          audience?: string
           created_at?: string
           id?: string
           message: string
           target_user_id?: string | null
         }
         Update: {
+          audience?: string
           created_at?: string
           id?: string
           message?: string
@@ -422,28 +452,34 @@ export type Database = {
       }
       packages: {
         Row: {
+          badge: string
           daily_rate: number
           id: number
           is_visible: boolean
           name: string
           package_type: string
           price: number
+          priority: number
         }
         Insert: {
+          badge?: string
           daily_rate: number
           id?: number
           is_visible?: boolean
           name: string
           package_type?: string
           price: number
+          priority?: number
         }
         Update: {
+          badge?: string
           daily_rate?: number
           id?: number
           is_visible?: boolean
           name?: string
           package_type?: string
           price?: number
+          priority?: number
         }
         Relationships: []
       }
@@ -677,28 +713,46 @@ export type Database = {
       }
       support_conversations: {
         Row: {
+          admin_read_at: string
           category: string
+          closed_at: string | null
           created_at: string
           description: string
           id: string
+          last_admin_message_at: string | null
+          last_user_message_at: string | null
+          status: string
           updated_at: string
           user_id: string
+          user_read_at: string
         }
         Insert: {
+          admin_read_at?: string
           category: string
+          closed_at?: string | null
           created_at?: string
           description: string
           id?: string
+          last_admin_message_at?: string | null
+          last_user_message_at?: string | null
+          status?: string
           updated_at?: string
           user_id: string
+          user_read_at?: string
         }
         Update: {
+          admin_read_at?: string
           category?: string
+          closed_at?: string | null
           created_at?: string
           description?: string
           id?: string
+          last_admin_message_at?: string | null
+          last_user_message_at?: string | null
+          status?: string
           updated_at?: string
           user_id?: string
+          user_read_at?: string
         }
         Relationships: [
           {
@@ -1010,6 +1064,8 @@ export type Database = {
           fee_amount: number
           fee_notice: string
           fee_percent: number
+          fee_status: string
+          fee_tx: string | null
           fee_wallet: string
           id: string
           network: string
@@ -1024,6 +1080,8 @@ export type Database = {
           fee_amount?: number
           fee_notice?: string
           fee_percent?: number
+          fee_status?: string
+          fee_tx?: string | null
           fee_wallet?: string
           id?: string
           network?: string
@@ -1038,6 +1096,8 @@ export type Database = {
           fee_amount?: number
           fee_notice?: string
           fee_percent?: number
+          fee_status?: string
+          fee_tx?: string | null
           fee_wallet?: string
           id?: string
           network?: string
@@ -1104,29 +1164,62 @@ export type Database = {
         Args: { _admin_note: string; _request_id: string }
         Returns: undefined
       }
-      request_network_withdrawal: {
-        Args: { _amount: number; _network: string; _wallet: string }
-        Returns: {
-          amount: number
-          created_at: string
-          fee_amount: number
-          fee_notice: string
-          fee_percent: number
-          fee_wallet: string
-          id: string
-          network: string
-          processed_at: string | null
-          status: string
-          user_id: string
-          wallet_address: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "withdrawals"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      request_network_withdrawal:
+        | {
+            Args: { _amount: number; _network: string; _wallet: string }
+            Returns: {
+              amount: number
+              created_at: string
+              fee_amount: number
+              fee_notice: string
+              fee_percent: number
+              fee_status: string
+              fee_tx: string | null
+              fee_wallet: string
+              id: string
+              network: string
+              processed_at: string | null
+              status: string
+              user_id: string
+              wallet_address: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "withdrawals"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              _amount: number
+              _fee_tx: string
+              _network: string
+              _wallet: string
+            }
+            Returns: {
+              amount: number
+              created_at: string
+              fee_amount: number
+              fee_notice: string
+              fee_percent: number
+              fee_status: string
+              fee_tx: string | null
+              fee_wallet: string
+              id: string
+              network: string
+              processed_at: string | null
+              status: string
+              user_id: string
+              wallet_address: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "withdrawals"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       request_package_change: {
         Args: { _note: string; _to_package_id: number; _user_id: string }
         Returns: string
@@ -1144,6 +1237,8 @@ export type Database = {
         Args: { _links: string[]; _proof_image: string; _task_id: string }
         Returns: string
       }
+      support_close: { Args: { _id: string }; Returns: undefined }
+      support_mark_read: { Args: { _id: string }; Returns: undefined }
       wheel_audience_eligible: {
         Args: {
           _active: boolean

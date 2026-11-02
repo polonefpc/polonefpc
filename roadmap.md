@@ -22,3 +22,11 @@
 - [x] Verify reward customer/admin loading and previously awarded prize display
 - [ ] Verify new reward/task crediting — requires an authorized new round/task and real balance credit
 - [x] Add admin-set percentage withdrawal fee with copyable fee wallet and notice
+
+- [ ] Withdrawal: fee payment request first (wallet/copy/notice), admin approves fee, then withdrawal approved
+- [ ] Support: keep closed history, "completed" status, new chat button, red reply badge, admin unread highlight, admin-only history delete
+- [ ] Unified earnings log with source (wheel/task/gift/welcome/deposit), auto-delete after 45 days
+- [ ] Admin: task requests and wheel log as separate sections
+- [ ] Notifications audience: active/inactive/all/one
+- [ ] Package highlight/featured ordering from admin
+- [ ] Tasks: proof image optional
