@@ -255,19 +255,20 @@ export function useProfile() {
     setLoading(true);
     const { data: u } = await supabase.auth.getUser();
     if (!u.user) return;
-    const [p, pkg, txs, refs, dep, wd, mrefs] = await Promise.all([
+    const [p, pkg, txs, refs, dep, wd, mrefs, logs] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", u.user.id).single(),
-      supabase.from("packages").select("*").order("id"),
+      supabase.from("packages").select("*").order("priority", { ascending: false }).order("id"),
       supabase.from("daily_yields").select("*").eq("user_id", u.user.id).order("applied_on",{ascending:false}).limit(30),
       supabase.from("profiles").select("id,email,full_name,created_at,is_active").eq("referred_by", u.user.id).order("created_at", { ascending: false }),
       supabase.from("deposit_requests").select("*").eq("user_id", u.user.id).order("created_at",{ascending:false}).limit(30),
       supabase.from("withdrawals").select("*").eq("user_id", u.user.id).order("created_at",{ascending:false}).limit(30),
       (supabase as any).from("manual_referrals").select("id,full_name,is_active,created_at").eq("user_id", u.user.id).order("created_at",{ascending:false}),
+      supabase.from("earning_logs").select("*").eq("user_id", u.user.id).order("created_at",{ascending:false}).limit(200),
     ]);
     const yields = txs.data ?? [];
     const transactions = [
-      ...yields.map((y: any) => ({ id: `y-${y.id}`, kind: "yield", amount: Number(y.amount), at: y.created_at ?? y.applied_on, status: null })),
-      ...(dep.data ?? []).map((d: any) => ({ id: `d-${d.id}`, kind: "deposit", amount: Number(d.amount), at: d.created_at, status: d.status })),
+      ...(logs.data ?? []).map((l: any) => ({ id: `l-${l.id}`, kind: l.source, amount: Number(l.amount), at: l.created_at, status: null, note: l.note })),
+      ...(dep.data ?? []).filter((d: any) => d.status !== "approved" && !d.package_id).map((d: any) => ({ id: `d-${d.id}`, kind: "deposit", amount: Number(d.amount), at: d.created_at, status: d.status })),
       ...(wd.data ?? []).map((w: any) => ({ id: `w-${w.id}`, kind: "withdraw", amount: Number(w.amount), at: w.created_at, status: w.status })),
     ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
     const allRefs = [
@@ -443,19 +444,21 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
 
 
       <div className="glass rounded-3xl p-5">
-        <h3 className="font-bold mb-3">سجل المعاملات</h3>
+        <h3 className="font-bold mb-1">سجل الأرباح والمعاملات</h3>
+        <p className="text-[11px] text-muted-foreground mb-3">يُحفظ السجل لمدة 45 يوماً.</p>
         {(!transactions || transactions.length === 0) ? <div className="text-sm text-muted-foreground">لا توجد معاملات بعد.</div> :
           <ul className="text-sm divide-y divide-border">
             {transactions.map((t: any) => {
-              const label = t.kind === "yield" ? "ربح يومي" : t.kind === "deposit" ? "إيداع" : "سحب";
-              const color = t.kind === "yield" ? "text-success" : t.kind === "withdraw" ? "text-destructive" : "text-foreground";
+              const label = EARNING_LABELS[t.kind] ?? t.kind;
+              const color = t.kind === "withdraw" ? "text-destructive" : t.kind === "deposit" && t.status ? "text-foreground" : "text-success";
               const sign = t.kind === "withdraw" ? "−" : "+";
-              const st = t.status === "pending" ? " (قيد المراجعة)" : t.status === "rejected" ? " (مرفوض)" : "";
+              const st = t.status === "pending" ? " (قيد المراجعة)" : t.status === "fee_pending" ? " (بانتظار تأكيد الرسوم)" : t.status === "rejected" ? " (مرفوض)" : "";
               return (
                 <li key={t.id} className="flex justify-between py-2 gap-2">
                   <span className="min-w-0">
                     <span className="font-medium">{label}</span>
                     <span className="text-muted-foreground text-xs">{st}</span>
+                    {t.note && <span className="block text-[11px] text-muted-foreground truncate">{t.note}</span>}
                     <span className="block text-[11px] text-muted-foreground">
                       {new Date(t.at).toLocaleString("ar-IQ", { dateStyle: "short", timeStyle: "short" })}
                     </span>
