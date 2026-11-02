@@ -16,6 +16,7 @@ import { RewardsClient } from "@/components/rewards-client";
 import { MarketIndicator, type SignalPoint } from "@/components/market-indicator";
 
 type Tab = "home" | "deposit" | "withdraw" | "local" | "shop" | "referral" | "notifications" | "rewards";
+const EARNING_LABELS: Record<string, string> = { yield: "ربح يومي", wheel: "ربح من عجلة الحظ", task: "مكافأة مهمة", welcome: "بونص ترحيبي", gift: "هدية المنصة", deposit: "إيداع", referral: "مكافأة الإحالات", agent: "شحن من وكيل", transfer: "تحويل مستلم", withdraw: "سحب" };
 
 const TABS: { id: Tab; label: string; icon: typeof Home }[] = [
   { id: "home", label: "الرئيسية", icon: Home },
