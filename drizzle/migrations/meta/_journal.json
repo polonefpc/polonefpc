@@ -29,6 +29,13 @@
       "when": 1793491572684,
       "tag": "0003_support_images_auto_replies_free_text_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793578104880,
+      "tag": "0004_fees_support_history_earnings_log",
+      "breakpoints": true
     }
   ]
 }
