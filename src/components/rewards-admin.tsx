@@ -95,7 +95,7 @@ export function RewardsAdmin() {
       <div className={box}>
         <div className="font-bold text-sm">آخر نتائج العجلة</div>
         {d.spins.length === 0 && <div className="text-xs text-muted-foreground">لا توجد نتائج</div>}
-        {d.spins.slice(0, 30).map(s => <div key={s.id} className="text-xs flex justify-between"><span>{name(s.user_id)}</span><span>{s.label} · {s.amount} USDT</span></div>)}
+        {d.spins.slice(0, 200).map(s => <div key={s.id} className="text-xs flex justify-between border-b border-border py-1"><span>{name(s.user_id)} · {new Date(s.created_at).toLocaleString("ar")}</span><span>{s.label} · {s.amount} USDT</span></div>)}
       </div>
       </>}
 
