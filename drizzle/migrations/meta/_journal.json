@@ -36,6 +36,13 @@
       "when": 1793578104880,
       "tag": "0004_fees_support_history_earnings_log",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793669589568,
+      "tag": "0005_account_bans",
+      "breakpoints": true
     }
   ]
 }
