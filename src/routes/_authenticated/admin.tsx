@@ -583,7 +583,12 @@ function Packages() {
       {items.map(pkg => (
         <div key={pkg.id} className="glass rounded-xl p-4 flex items-center justify-between gap-3">
           <div>
-            <div className="font-bold">{pkg.name} {pkg.is_visible === false && <span className="text-[10px] bg-destructive/20 text-destructive px-1.5 py-0.5 rounded">مخفية</span>}</div>
+            <div className="font-bold">{pkg.name} {pkg.is_visible === false && <span className="text-[10px] bg-destructive/20 text-destructive px-1.5 py-0.5 rounded">مخفية</span>} {pkg.badge && <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded">{pkg.badge}</span>}</div>
+            <div className="mt-2 flex flex-wrap items-center gap-1">
+              <input defaultValue={pkg.badge} placeholder="تمييز (مثل: الأكثر ربحاً)" className="bg-input rounded px-2 py-1 text-xs w-40" onBlur={async e => { if (e.target.value !== pkg.badge) { await (supabase as any).from("packages").update({ badge: e.target.value.trim().slice(0, 40) }).eq("id", pkg.id); toast.success("تم حفظ التمييز"); load(); } }} />
+              <button onClick={async () => { const top = Math.max(0, ...items.map((x: any) => Number(x.priority) || 0)); await (supabase as any).from("packages").update({ priority: top + 1 }).eq("id", pkg.id); toast.success("أصبحت الباقة الأولى"); load(); }} className="text-xs glass px-2 py-1 rounded">اجعلها الأولى</button>
+              {pkg.priority > 0 && <button onClick={async () => { await (supabase as any).from("packages").update({ priority: 0 }).eq("id", pkg.id); load(); }} className="text-xs glass px-2 py-1 rounded">إلغاء الترتيب</button>}
+            </div>
             <div className="text-xs text-muted-foreground mt-1">{pkg.package_type}</div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -1266,8 +1271,8 @@ function NotificationsAdmin() {
   const name = (id: string) => { const u = users.find(x => x.id === id); return u ? `${u.full_name || u.email} (${u.referral_code})` : id; };
   const send = async () => {
     if (!message.trim()) return toast.error("اكتب الإشعار");
-    const { error } = await db.from("notifications").insert({ message: message.trim(), target_user_id: audience === "one" ? target || null : null, audience: audience === "one" ? "all" : audience });
     if (audience === "one" && !target) return toast.error("اختر الحساب");
+    const { error } = await db.from("notifications").insert({ message: message.trim(), target_user_id: audience === "one" ? target : null, audience: audience === "one" ? "all" : audience });
     if (error) return toast.error(error.message);
     toast.success("تم الإرسال"); setMessage(""); load();
   };
