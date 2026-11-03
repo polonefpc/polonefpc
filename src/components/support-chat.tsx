@@ -71,7 +71,7 @@ export function SupportChat({ admin = false }: { admin?: boolean }) {
     const { data, error } = await supabase.from('support_conversations').select('*,profiles(full_name,referral_code)').order('updated_at', { ascending: false });
     if (error) { toast.error('تعذر تحميل المحادثات'); return; }
     setConversations(data ?? []);
-    setSelected(old => admin ? ((data ?? []).some(c => c.id === old) ? old : null) : data?.[0]?.id ?? null);
+    setSelected(old => (data ?? []).some(c => c.id === old) ? old : admin ? null : data?.[0]?.id ?? null);
     setReady(true);
   }, [admin]);
 
