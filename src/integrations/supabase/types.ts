@@ -570,6 +570,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_active: boolean
+          is_banned: boolean
           package_id: number | null
           referral_code: string
           referral_count: number
@@ -584,6 +585,7 @@ export type Database = {
           full_name?: string | null
           id: string
           is_active?: boolean
+          is_banned?: boolean
           package_id?: number | null
           referral_code: string
           referral_count?: number
@@ -598,6 +600,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_active?: boolean
+          is_banned?: boolean
           package_id?: number | null
           referral_code?: string
           referral_count?: number

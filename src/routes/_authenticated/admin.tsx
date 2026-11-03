@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, ChevronUp, ChevronDown, ArrowDownLeft, ArrowUpRight, ShoppingBag, UsersRound, Layers3, Boxes, MapPinned, Store, CircleHelp, Megaphone, BellRing, ContactRound, BadgeCheck, Sparkles, Percent, MessagesSquare, Settings2 } from "lucide-react";
-import { runDailyYields } from "@/lib/admin.functions";
+import { ArrowLeft, ChevronUp, ChevronDown, ArrowDownLeft, ArrowUpRight, ShoppingBag, UsersRound, Layers3, Boxes, MapPinned, Store, CircleHelp, Megaphone, BellRing, ContactRound, BadgeCheck, Sparkles, Percent, MessagesSquare, Settings2, ArrowLeftRight } from "lucide-react";
+import { runDailyYields, adminStartSupport } from "@/lib/admin.functions";
 import { promoteAgent, revokeAgent, updateAgentBalance } from "@/lib/agent-admin.functions";
 import { AccountsAdmin } from "@/components/accounts-admin";
 import { RewardsAdmin, WithdrawFeeAdmin } from "@/components/rewards-admin";
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
   component: Admin,
 });
 
-type Tab = "deposits" | "withdrawals" | "orders" | "users" | "packages" | "products" | "agents" | "contacts" | "settings" | "help" | "advertisements" | "notifications" | "accounts" | "active" | "rewards" | "withdrawFee" | "support";
+type Tab = "deposits" | "withdrawals" | "orders" | "users" | "packages" | "products" | "agents" | "contacts" | "settings" | "help" | "advertisements" | "notifications" | "accounts" | "active" | "rewards" | "withdrawFee" | "support" | "transfers";
 const TABS: { id: Tab; label: string }[] = [
   { id: "deposits", label: "طلبات الإيداع" },
   { id: "withdrawals", label: "طلبات السحب" },
@@ -44,9 +44,10 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "rewards", label: "العجلة والمهام" },
   { id: "withdrawFee", label: "رسوم السحب" },
   { id: "support", label: "محادثات الدعم" },
+  { id: "transfers", label: "سجل التحويلات" },
   { id: "settings", label: "الإعدادات" },
 ];
-const TAB_ICONS = { deposits: ArrowDownLeft, withdrawals: ArrowUpRight, orders: ShoppingBag, users: UsersRound, packages: Layers3, products: Boxes, contacts: MapPinned, agents: Store, help: CircleHelp, advertisements: Megaphone, notifications: BellRing, accounts: ContactRound, active: BadgeCheck, rewards: Sparkles, withdrawFee: Percent, support: MessagesSquare, settings: Settings2 };
+const TAB_ICONS = { deposits: ArrowDownLeft, withdrawals: ArrowUpRight, orders: ShoppingBag, users: UsersRound, packages: Layers3, products: Boxes, contacts: MapPinned, agents: Store, help: CircleHelp, advertisements: Megaphone, notifications: BellRing, accounts: ContactRound, active: BadgeCheck, rewards: Sparkles, withdrawFee: Percent, support: MessagesSquare, transfers: ArrowLeftRight, settings: Settings2 };
 
 function Admin() {
   const nav = useNavigate();
@@ -98,6 +99,7 @@ function Admin() {
         {tab === "rewards" && <RewardsAdmin />}
         {tab === "withdrawFee" && <WithdrawFeeAdmin />}
         {tab === "support" && <SupportChat admin />}
+        {tab === "transfers" && <TransfersAdmin />}
         {tab === "settings" && <Settings />}
       </div>
     </div>
@@ -149,6 +151,15 @@ function Deposits() {
             </div>
             <StatusBadge status={r.status} />
           </div>
+          {r.status === "fee_pending" && (
+            <div className="mt-3 space-y-2 rounded-lg border border-border p-2">
+              <div className="text-xs">طلب دفع رسوم: <b>${Number(r.fee_amount).toFixed(2)}</b> · رقم المعاملة: <span className="font-mono break-all">{r.fee_tx || "—"}</span></div>
+              <div className="flex gap-2">
+                <button onClick={()=>feeDecide(r,true)} className="bg-success/90 text-success-foreground px-3 py-1.5 rounded-lg text-sm font-bold">تأكيد الرسوم</button>
+                <button onClick={()=>feeDecide(r,false)} className="bg-destructive/90 text-destructive-foreground px-3 py-1.5 rounded-lg text-sm font-bold">رفض الرسوم</button>
+              </div>
+            </div>
+          )}
           {r.status === "pending" && (
             <div className="flex gap-2 mt-3">
               <button onClick={()=>decide(r,"approved")} className="bg-success/90 text-success-foreground px-3 py-1.5 rounded-lg text-sm font-bold">{r.package_id ? "قبول وتفعيل الباقة" : "قبول وإضافة الرصيد"}</button>
@@ -167,6 +178,14 @@ function Withdrawals() {
     .select("*,profiles!withdrawals_user_profile_fkey(email,full_name,balance)")
     .order("created_at",{ascending:false}).then(({data})=>setItems(data ?? []));
   useEffect(()=>{load();},[]);
+  const feeDecide = async (r:any, ok:boolean) => {
+    if (!ok) {
+      const { data: p } = await supabase.from("profiles").select("balance").eq("id", r.user_id).single();
+      await supabase.from("profiles").update({ balance: Number(p?.balance ?? 0) + Number(r.amount) }).eq("id", r.user_id);
+    }
+    await (supabase as any).from("withdrawals").update(ok ? { fee_status: "approved", status: "pending" } : { fee_status: "rejected", status: "rejected", processed_at: new Date().toISOString() }).eq("id", r.id);
+    toast.success(ok ? "تم تأكيد الرسوم — الطلب جاهز للموافقة" : "تم رفض الرسوم وإعادة الرصيد"); load();
+  };
   const decide = async (r:any, status:"approved"|"rejected") => {
     if (status === "rejected") {
       // Refund: balance was deducted at request time
@@ -251,6 +270,7 @@ function Users() {
     const u = items.find(x=>x.id===id);
     const next = Math.max(0, Number(u.balance) + sign * a);
     await supabase.from("profiles").update({ balance: next }).eq("id", id);
+    if (sign === 1) await (supabase as any).from("earning_logs").insert({ user_id: id, source: "gift", amount: a, note: "هدية المنصة" });
     toast.success(sign === 1 ? "تمت الإضافة" : "تم الخصم");
     setDelta({...delta,[id]:""}); load();
   };
@@ -517,8 +537,8 @@ function Packages() {
 
   const load = () => (supabase as any)
     .from("packages")
-    .select("id,name,package_type,price,daily_rate,is_visible")
-    .order("price")
+    .select("id,name,package_type,price,daily_rate,is_visible,priority,badge")
+    .order("priority", { ascending: false }).order("price")
     .then(({ data }: { data: any[] | null }) => setItems(data ?? []));
 
   useEffect(() => { load(); }, []);
@@ -563,7 +583,12 @@ function Packages() {
       {items.map(pkg => (
         <div key={pkg.id} className="glass rounded-xl p-4 flex items-center justify-between gap-3">
           <div>
-            <div className="font-bold">{pkg.name} {pkg.is_visible === false && <span className="text-[10px] bg-destructive/20 text-destructive px-1.5 py-0.5 rounded">مخفية</span>}</div>
+            <div className="font-bold">{pkg.name} {pkg.is_visible === false && <span className="text-[10px] bg-destructive/20 text-destructive px-1.5 py-0.5 rounded">مخفية</span>} {pkg.badge && <span className="text-[10px] bg-primary/20 text-primary px-1.5 py-0.5 rounded">{pkg.badge}</span>}</div>
+            <div className="mt-2 flex flex-wrap items-center gap-1">
+              <input defaultValue={pkg.badge} placeholder="تمييز (مثل: الأكثر ربحاً)" className="bg-input rounded px-2 py-1 text-xs w-40" onBlur={async e => { if (e.target.value !== pkg.badge) { await (supabase as any).from("packages").update({ badge: e.target.value.trim().slice(0, 40) }).eq("id", pkg.id); toast.success("تم حفظ التمييز"); load(); } }} />
+              <button onClick={async () => { const top = Math.max(0, ...items.map((x: any) => Number(x.priority) || 0)); await (supabase as any).from("packages").update({ priority: top + 1 }).eq("id", pkg.id); toast.success("أصبحت الباقة الأولى"); load(); }} className="text-xs glass px-2 py-1 rounded">اجعلها الأولى</button>
+              {pkg.priority > 0 && <button onClick={async () => { await (supabase as any).from("packages").update({ priority: 0 }).eq("id", pkg.id); load(); }} className="text-xs glass px-2 py-1 rounded">إلغاء الترتيب</button>}
+            </div>
             <div className="text-xs text-muted-foreground mt-1">{pkg.package_type}</div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -910,6 +935,7 @@ function Settings() {
     let n = 0;
     for (const u of users ?? []) {
       await supabase.from("profiles").update({ balance: Number(u.balance) + a }).eq("id", u.id);
+      await (supabase as any).from("earning_logs").insert({ user_id: u.id, source: "gift", amount: a, note: "هدية المنصة" });
       n++;
     }
     setGiftBusy(false); setGift("");
@@ -1230,6 +1256,7 @@ function NotificationsAdmin() {
   const [users, setUsers] = useState<any[]>([]);
   const [message, setMessage] = useState("");
   const [target, setTarget] = useState("");
+  const [audience, setAudience] = useState("all");
   const [search, setSearch] = useState("");
   const db = supabase as any;
   const load = async () => {
@@ -1244,7 +1271,8 @@ function NotificationsAdmin() {
   const name = (id: string) => { const u = users.find(x => x.id === id); return u ? `${u.full_name || u.email} (${u.referral_code})` : id; };
   const send = async () => {
     if (!message.trim()) return toast.error("اكتب الإشعار");
-    const { error } = await db.from("notifications").insert({ message: message.trim(), target_user_id: target || null });
+    if (audience === "one" && !target) return toast.error("اختر الحساب");
+    const { error } = await db.from("notifications").insert({ message: message.trim(), target_user_id: audience === "one" ? target : null, audience: audience === "one" ? "all" : audience });
     if (error) return toast.error(error.message);
     toast.success("تم الإرسال"); setMessage(""); load();
   };
@@ -1252,18 +1280,20 @@ function NotificationsAdmin() {
     <div className="space-y-4">
       <div className="glass rounded-2xl p-4 space-y-3">
         <textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="نص الإشعار" className="w-full bg-input rounded-lg px-3 py-2 min-h-20" />
+        <div className="flex flex-wrap gap-2">{[["all","الجميع"],["active","المفعّلة"],["inactive","غير المفعّلة"],["one","حساب محدد"]].map(([k,l]) => <Button key={k} size="sm" variant={audience === k ? "default" : "secondary"} onClick={() => setAudience(k)}>{l}</Button>)}</div>
+        {audience === "one" && <>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث عن عميل بالاسم أو المعرّف" className="w-full bg-input rounded-lg px-3 py-2" />
         <select value={target} onChange={e => setTarget(e.target.value)} className="w-full bg-input rounded-lg px-3 py-2">
-          <option value="">جميع العملاء</option>
+          <option value="">اختر الحساب</option>
           {filtered.map(u => <option key={u.id} value={u.id}>{u.full_name || u.email} — {u.referral_code}</option>)}
-        </select>
+        </select></>}
         <button onClick={send} className="btn-primary px-4 py-2 rounded-lg font-bold">إرسال</button>
       </div>
       {rows.map(r => (
         <div key={r.id} className="glass rounded-2xl p-3 flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <div className="text-sm">{r.message}</div>
-            <div className="text-xs text-muted-foreground">{r.target_user_id ? name(r.target_user_id) : "جميع العملاء"} · {new Date(r.created_at).toLocaleString("ar")}</div>
+            <div className="text-xs text-muted-foreground">{r.target_user_id ? name(r.target_user_id) : ({ all: "الجميع", active: "المفعّلة", inactive: "غير المفعّلة" } as any)[r.audience] ?? "الجميع"} · {new Date(r.created_at).toLocaleString("ar")}</div>
           </div>
           <button onClick={async () => { await db.from("notifications").delete().eq("id", r.id); load(); }} className="text-xs bg-destructive/90 px-2 py-1 rounded">حذف</button>
         </div>

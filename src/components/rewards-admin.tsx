@@ -18,6 +18,7 @@ export function RewardsAdmin() {
   const [prize, setPrize] = useState({ label: "", amount: "", weight: "" });
   const [task, setTask] = useState({ title: "", description: "", share_url: "", reward: "" });
   const [assign, setAssign] = useState({ userId: "", prizeId: "", q: "" });
+  const [sec, setSec] = useState<"wheel" | "log" | "tasks" | "subs">("wheel");
   const [notes, setNotes] = useState<Record<string, string>>({});
 
   const reload = async () => { try { setD(await load()); } catch (e: any) { toast.error(e.message); } };
@@ -35,6 +36,8 @@ export function RewardsAdmin() {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">{([["wheel","العجلة"],["log","سجل العجلة"],["tasks","المهام"],["subs","طلبات المهام"]] as const).map(([k,l]) => <Button key={k} size="sm" variant={sec === k ? "default" : "secondary"} onClick={() => setSec(k)}>{l}{k === "subs" && d.submissions.some(s => s.status === "pending") ? ` (${d.submissions.filter(s => s.status === "pending").length})` : ""}</Button>)}</div>
+      {sec === "wheel" && <>
       <h2 className="font-bold text-lg">عجلة الربح</h2>
       <div className={box}>
         <label className="flex items-center gap-2 font-bold text-sm">
@@ -86,13 +89,17 @@ export function RewardsAdmin() {
           ))}
         </div>
       )}
+      </>}
 
+      {sec === "log" && <>
       <div className={box}>
         <div className="font-bold text-sm">آخر نتائج العجلة</div>
         {d.spins.length === 0 && <div className="text-xs text-muted-foreground">لا توجد نتائج</div>}
-        {d.spins.slice(0, 30).map(s => <div key={s.id} className="text-xs flex justify-between"><span>{name(s.user_id)}</span><span>{s.label} · {s.amount} USDT</span></div>)}
+        {d.spins.slice(0, 200).map(s => <div key={s.id} className="text-xs flex justify-between border-b border-border py-1"><span>{name(s.user_id)} · {new Date(s.created_at).toLocaleString("ar")}</span><span>{s.label} · {s.amount} USDT</span></div>)}
       </div>
+      </>}
 
+      {sec === "tasks" && <>
       <h2 className="font-bold text-lg pt-2">المهام</h2>
       <div className={box}>
         <input className={input} placeholder="عنوان المهمة (مثلاً: شارك رابط المنصة)" value={task.title} onChange={e => setTask({ ...task, title: e.target.value })} />
@@ -107,7 +114,9 @@ export function RewardsAdmin() {
           </div>
         ))}
       </div>
+      </>}
 
+      {sec === "subs" && <>
       <div className={box}>
         <div className="font-bold text-sm">طلبات المهام</div>
         {d.submissions.length === 0 && <div className="text-xs text-muted-foreground">لا توجد طلبات</div>}
@@ -127,6 +136,7 @@ export function RewardsAdmin() {
           </div>
         ))}
       </div>
+      </>}
     </div>
   );
 }

@@ -81,3 +81,19 @@ export const cleanupInactiveAccounts = createServerFn({ method: "POST" })
     for (const r of rows ?? []) { if (skip.has(r.id)) continue; await deleteAccount(db, r.id); n++; }
     return { deleted: n };
   });
+
+export const adminStartSupport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { userId: string; message: string }) => {
+    if (!/^[0-9a-f-]{36}$/i.test(d.userId) || !d.message?.trim() || d.message.length > 3000) throw new Error("بيانات غير صالحة");
+    return { userId: d.userId, message: d.message.trim() };
+  })
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = supabaseAdmin as any;
+    const { data: c, error } = await db.from("support_conversations").insert({ user_id: data.userId, category: "رسالة من الإدارة", description: data.message }).select("id").single();
+    if (error) throw new Error("تعذر إرسال الرسالة");
+    await db.from("support_messages").insert({ conversation_id: c.id, sender_id: context.userId, body: data.message });
+    return { ok: true };
+  });

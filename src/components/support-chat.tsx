@@ -57,32 +57,37 @@ export function SupportChat({ admin = false }: { admin?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [fresh, setFresh] = useState(false);
   const [details, setDetails] = useState<Awaited<ReturnType<typeof supportCustomer>> | null>(null);
   const getDetails = useServerFn(supportCustomer);
   const bottom = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
-  const current = conversations.find(c => c.id === selected);
+  const current = fresh ? undefined : conversations.find(c => c.id === selected);
+  const isUnread = (c: any) => admin ? !!c.last_user_message_at && c.last_user_message_at > c.admin_read_at : !!c.last_admin_message_at && c.last_admin_message_at > c.user_read_at;
+  const unread = conversations.filter(isUnread).length;
+  const closed = current?.status === 'closed';
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.from('support_conversations').select('*,profiles(full_name,referral_code)').order('updated_at', { ascending: false });
     if (error) { toast.error('تعذر تحميل المحادثات'); return; }
     setConversations(data ?? []);
-    setSelected(old => admin ? ((data ?? []).some(c => c.id === old) ? old : null) : data?.[0]?.id ?? null);
+    setSelected(old => (data ?? []).some(c => c.id === old) ? old : admin ? null : data?.[0]?.id ?? null);
     setReady(true);
   }, [admin]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open && admin) return;
     void supabase.auth.getUser().then(({ data }) => { if (data.user) setUid(data.user.id); });
     void load();
     const channel = supabase.channel(`support-list-${admin}`).on('postgres_changes', { event: '*', schema: 'public', table: 'support_conversations' }, () => { void load(); }).subscribe();
-    const timer = window.setInterval(() => { void load(); }, 6000);
+    const timer = window.setInterval(() => { void load(); }, open ? 6000 : 20000);
     return () => { void supabase.removeChannel(channel); clearInterval(timer); };
   }, [open, admin, load]);
 
   const read = useCallback(async (id: string) => {
     const { data, error } = await supabase.from('support_messages').select('*').eq('conversation_id', id).order('created_at').order('id');
     if (!error) setMessages(data ?? []);
+    void supabase.rpc('support_mark_read', { _id: id });
   }, []);
 
   useEffect(() => {
@@ -106,7 +111,7 @@ export function SupportChat({ admin = false }: { admin?: boolean }) {
     try {
       const { error } = await supabase.from('support_conversations').insert({ user_id: uid, category, description: description.trim() });
       if (error) throw error;
-      setDescription(''); await load();
+      setDescription(''); setFresh(false); setSelected(null); await load();
     } catch { toast.error('تعذر فتح المحادثة، حاول مجدداً'); } finally { setBusy(false); }
   };
   const pick = async (file?: File) => {
@@ -125,15 +130,23 @@ export function SupportChat({ admin = false }: { admin?: boolean }) {
     void read(selected);
   };
   const finish = async () => {
-    if (!selected || !window.confirm('إنهاء المحادثة وحذفها مع جميع رسائلها نهائياً؟')) return;
+    if (!selected || !window.confirm('إنهاء المحادثة؟ سيبقى السجل محفوظاً')) return;
+    setBusy(true);
+    const { error } = await supabase.rpc('support_close', { _id: selected });
+    setBusy(false);
+    if (error) return toast.error('تعذر إنهاء المحادثة');
+    await load(); toast.success('تم إنهاء المحادثة كمكتملة');
+  };
+  const removeHistory = async () => {
+    if (!selected || !window.confirm('حذف سجل هذه المحادثة نهائياً؟')) return;
     setBusy(true);
     const { error } = await supabase.from('support_conversations').delete().eq('id', selected);
     setBusy(false);
-    if (error) return toast.error('تعذر إنهاء المحادثة');
-    setSelected(null); setMessages([]); await load(); toast.success('تم إنهاء المحادثة وحذفها');
+    if (error) return toast.error('تعذر الحذف');
+    setSelected(null); setMessages([]); await load(); toast.success('تم حذف السجل');
   };
 
-  if (!open) return <Button onClick={() => setOpen(true)} className="fixed bottom-28 end-4 z-40 h-12 w-12 rounded-full shadow-lg" size="icon" aria-label="الدعم المباشر" title="الدعم المباشر"><MessageCircle /></Button>;
+  if (!open) return <Button onClick={() => setOpen(true)} className="fixed bottom-28 end-4 z-40 h-12 w-12 rounded-full shadow-lg" size="icon" aria-label="الدعم المباشر" title="الدعم المباشر"><MessageCircle />{unread > 0 && <span className="absolute -top-1 -end-1 grid size-5 place-items-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">{unread}</span>}</Button>;
 
   const name = current ? (admin ? current.profiles?.full_name || 'عميل' : 'فريق الدعم') : 'الدعم المباشر';
   const thread = current && <div className="flex min-h-0 flex-1 flex-col">
@@ -142,7 +155,9 @@ export function SupportChat({ admin = false }: { admin?: boolean }) {
       <div className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/15 font-bold text-primary">{admin ? name.slice(0, 1) : <Headset className="size-5" />}</div>
       <div className="min-w-0 flex-1"><div className="truncate font-semibold">{name} {admin && <span className="text-xs text-muted-foreground">#{current.profiles?.referral_code}</span>}</div><div className="truncate text-xs text-muted-foreground">{current.category}</div></div>
       {admin && <Button size="icon" variant={showInfo ? 'secondary' : 'ghost'} onClick={() => setShowInfo(v => !v)} aria-label="معلومات العميل"><Info /></Button>}
-      {admin && <Button size="icon" variant="ghost" className="text-destructive" disabled={busy} onClick={finish} aria-label="إنهاء المحادثة وحذفها" title="إنهاء المحادثة وحذفها"><Trash2 /></Button>}
+      {admin && !closed && <Button size="sm" variant="secondary" disabled={busy} onClick={finish}>إنهاء</Button>}
+      {admin && <Button size="icon" variant="ghost" className="text-destructive" disabled={busy} onClick={removeHistory} aria-label="حذف السجل" title="حذف السجل"><Trash2 /></Button>}
+      {!admin && <Button size="sm" variant="ghost" onClick={() => setFresh(true)}>دردشة جديدة</Button>}
       {!admin && <Button size="icon" variant="ghost" onClick={() => setOpen(false)} aria-label="إغلاق الدعم"><X /></Button>}
     </header>
     {admin && showInfo && <div className="max-h-72 overflow-y-auto border-b border-border bg-secondary/40 p-3 text-sm">{!details ? <LoaderCircle className="mx-auto animate-spin" /> : <>
@@ -166,13 +181,13 @@ export function SupportChat({ admin = false }: { admin?: boolean }) {
       })}
       <div ref={bottom} />
     </div>
-    {image && <div className="flex items-center gap-2 border-t border-border bg-card p-2"><img src={image} alt="معاينة" className="h-14 rounded" /><Button size="icon" variant="ghost" onClick={() => setImage('')} aria-label="إزالة الصورة"><X /></Button></div>}
+    {closed ? <div className="border-t border-border bg-card p-3 text-center text-sm"><b className="text-success">المحادثة مكتملة</b>{!admin && <Button className="mt-2 w-full" onClick={() => setFresh(true)}>رسالة دعم جديدة</Button>}</div> : <>{image && <div className="flex items-center gap-2 border-t border-border bg-card p-2"><img src={image} alt="معاينة" className="h-14 rounded" /><Button size="icon" variant="ghost" onClick={() => setImage('')} aria-label="إزالة الصورة"><X /></Button></div>}
     <form className="flex items-end gap-2 border-t border-border bg-card p-2" onSubmit={e => { e.preventDefault(); void send(); }}>
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => void pick(e.target.files?.[0])} />
       <Button type="button" size="icon" variant="ghost" onClick={() => fileRef.current?.click()} aria-label="إرفاق صورة"><ImagePlus /></Button>
       <textarea aria-label="رسالتك" placeholder="اكتب رسالتك…" className="reward-input min-h-10 min-w-0 flex-1 resize-none rounded-full" rows={1} maxLength={3000} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }} />
       <Button type="submit" size="icon" className="rounded-full" disabled={busy || (!text.trim() && !image)} aria-label="إرسال الرسالة">{busy ? <LoaderCircle className="animate-spin" /> : <Send />}</Button>
-    </form>
+    </form></>}
   </div>;
 
   if (admin) return <div className="space-y-4">
@@ -183,9 +198,9 @@ export function SupportChat({ admin = false }: { admin?: boolean }) {
         <div className="flex-1 overflow-y-auto">
           {!ready && <LoaderCircle className="mx-auto mt-6 animate-spin" />}
           {ready && !conversations.length && <p className="p-4 text-sm text-muted-foreground">لا توجد محادثات مفتوحة</p>}
-          {conversations.map(c => <button key={c.id} onClick={() => setSelected(c.id)} className={`flex w-full items-center gap-3 border-b border-border px-3 py-3 text-start transition-colors hover:bg-secondary ${c.id === selected ? 'bg-secondary' : ''}`}>
+          {conversations.map(c => <button key={c.id} onClick={() => setSelected(c.id)} className={`flex w-full items-center gap-3 border-b border-border px-3 py-3 text-start transition-colors hover:bg-secondary ${c.id === selected ? 'bg-secondary' : ''} ${isUnread(c) ? 'bg-primary/10' : ''}`}>
             <div className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/15 font-bold text-primary">{(c.profiles?.full_name || 'ع').slice(0, 1)}</div>
-            <div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><span className="truncate text-sm font-semibold">{c.profiles?.full_name || 'عميل'}</span><span className="shrink-0 text-[10px] text-muted-foreground">{time(c.updated_at)}</span></div><div className="truncate text-xs text-muted-foreground">{c.category}</div></div>
+            <div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><span className="truncate text-sm font-semibold">{c.profiles?.full_name || 'عميل'}</span><span className="shrink-0 text-[10px] text-muted-foreground">{time(c.updated_at)}</span></div><div className="flex justify-between gap-2 text-xs text-muted-foreground"><span className="truncate">{c.category}</span>{c.status === 'closed' ? <span className="text-success">مكتملة</span> : isUnread(c) && <span className="size-2.5 rounded-full bg-destructive" />}</div></div>
           </button>)}
         </div>
       </aside>
@@ -195,7 +210,7 @@ export function SupportChat({ admin = false }: { admin?: boolean }) {
 
   return <section role="dialog" aria-modal aria-label="الدعم المباشر" className="fixed inset-x-2 top-3 bottom-24 z-50 mx-auto flex max-w-xl flex-col overflow-hidden rounded-xl border border-border bg-background shadow-2xl">
     {!ready ? <LoaderCircle className="m-auto animate-spin" /> : thread || <>
-      <header className="flex items-center justify-between gap-2 border-b border-border p-4"><div className="flex items-center gap-2"><Headset className="text-primary" /><h2 className="font-bold">الدعم المباشر</h2></div><Button size="icon" variant="ghost" onClick={() => setOpen(false)} aria-label="إغلاق الدعم"><X /></Button></header>
+      <header className="flex items-center justify-between gap-2 border-b border-border p-4"><div className="flex items-center gap-2"><Headset className="text-primary" /><h2 className="font-bold">الدعم المباشر</h2></div>{conversations.length > 0 && <Button size="sm" variant="ghost" onClick={() => { setFresh(false); setSelected(conversations[0].id); }}>السجل</Button>}<Button size="icon" variant="ghost" onClick={() => setOpen(false)} aria-label="إغلاق الدعم"><X /></Button></header>
       <div className="space-y-4 overflow-y-auto p-4">
         <label className="block space-y-2 text-sm"><span>نوع المشكلة</span><select className="reward-input" value={category} onChange={e => setCategory(e.target.value)}>{CATEGORIES.map(c => <option key={c}>{c}</option>)}</select></label>
         <label className="block space-y-2 text-sm"><span>وصف المشكلة</span><textarea className="reward-input" rows={5} maxLength={3000} value={description} onChange={e => setDescription(e.target.value)} /></label>
