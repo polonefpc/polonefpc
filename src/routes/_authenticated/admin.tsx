@@ -1320,7 +1320,7 @@ function TransfersAdmin() {
   useEffect(() => { void load(); }, []);
   const nm = (id: string) => { const p = people[id]; return p ? `${p.full_name || p.email} #${p.referral_code}` : id.slice(0, 8); };
   const u = sel ? people[sel] : null;
-  const run = async (f: () => Promise<any>, ok: string) => { try { const r = await f(); if (r?.error) throw r.error; toast.success(ok); setMsg(""); await load(); } catch (e: any) { toast.error(e.message ?? "خطأ"); } };
+  const run = async (f: () => PromiseLike<any>, ok: string) => { try { const r = await f(); if (r?.error) throw r.error; toast.success(ok); setMsg(""); await load(); } catch (e: any) { toast.error(e.message ?? "خطأ"); } };
   return (
     <div className="space-y-3">
       {u && (
@@ -1333,7 +1333,7 @@ function TransfersAdmin() {
           </div>
           <textarea className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm" rows={2} placeholder="نص الإشعار أو رسالة الدعم" value={msg} onChange={e => setMsg(e.target.value)} />
           <div className="flex gap-2">
-            <Button size="sm" disabled={!msg.trim()} onClick={() => run(() => (supabase as any).from("notifications").insert({ message: msg.trim(), target_user_id: u.id, audience: "user" }), "تم إرسال الإشعار")}>إرسال إشعار</Button>
+            <Button size="sm" disabled={!msg.trim()} onClick={() => run(() => (supabase as any).from("notifications").insert({ message: msg.trim(), target_user_id: u.id, audience: "all" }), "تم إرسال الإشعار")}>إرسال إشعار</Button>
             <Button size="sm" variant="secondary" disabled={!msg.trim()} onClick={() => run(() => startSupport({ data: { userId: u.id, message: msg } }), "تم إرسال رسالة الدعم")}>رسالة دعم</Button>
           </div>
         </div>
