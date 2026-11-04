@@ -1333,7 +1333,7 @@ function TransfersAdmin() {
           </div>
           <textarea className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm" rows={2} placeholder="نص الإشعار أو رسالة الدعم" value={msg} onChange={e => setMsg(e.target.value)} />
           <div className="flex gap-2">
-            <Button size="sm" disabled={!msg.trim()} onClick={() => run(() => (supabase as any).from("notifications").insert({ title: "إشعار", body: msg.trim(), target_user_id: u.id }), "تم إرسال الإشعار")}>إرسال إشعار</Button>
+            <Button size="sm" disabled={!msg.trim()} onClick={() => run(() => (supabase as any).from("notifications").insert({ message: msg.trim(), target_user_id: u.id, audience: "user" }), "تم إرسال الإشعار")}>إرسال إشعار</Button>
             <Button size="sm" variant="secondary" disabled={!msg.trim()} onClick={() => run(() => startSupport({ data: { userId: u.id, message: msg } }), "تم إرسال رسالة الدعم")}>رسالة دعم</Button>
           </div>
         </div>
