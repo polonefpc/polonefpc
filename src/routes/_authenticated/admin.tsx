@@ -151,15 +151,6 @@ function Deposits() {
             </div>
             <StatusBadge status={r.status} />
           </div>
-          {r.status === "fee_pending" && (
-            <div className="mt-3 space-y-2 rounded-lg border border-border p-2">
-              <div className="text-xs">طلب دفع رسوم: <b>${Number(r.fee_amount).toFixed(2)}</b> · رقم المعاملة: <span className="font-mono break-all">{r.fee_tx || "—"}</span></div>
-              <div className="flex gap-2">
-                <button onClick={()=>feeDecide(r,true)} className="bg-success/90 text-success-foreground px-3 py-1.5 rounded-lg text-sm font-bold">تأكيد الرسوم</button>
-                <button onClick={()=>feeDecide(r,false)} className="bg-destructive/90 text-destructive-foreground px-3 py-1.5 rounded-lg text-sm font-bold">رفض الرسوم</button>
-              </div>
-            </div>
-          )}
           {r.status === "pending" && (
             <div className="flex gap-2 mt-3">
               <button onClick={()=>decide(r,"approved")} className="bg-success/90 text-success-foreground px-3 py-1.5 rounded-lg text-sm font-bold">{r.package_id ? "قبول وتفعيل الباقة" : "قبول وإضافة الرصيد"}</button>
@@ -210,6 +201,15 @@ function Withdrawals() {
             </div>
             <StatusBadge status={r.status} />
           </div>
+          {r.status === "fee_pending" && (
+            <div className="mt-3 space-y-2 rounded-lg border border-border p-2">
+              <div className="text-xs">طلب دفع رسوم: <b>${Number(r.fee_amount).toFixed(2)}</b> · رقم المعاملة: <span className="font-mono break-all">{r.fee_tx || "—"}</span></div>
+              <div className="flex gap-2">
+                <button onClick={()=>feeDecide(r,true)} className="bg-success/90 text-success-foreground px-3 py-1.5 rounded-lg text-sm font-bold">تأكيد الرسوم</button>
+                <button onClick={()=>feeDecide(r,false)} className="bg-destructive/90 text-destructive-foreground px-3 py-1.5 rounded-lg text-sm font-bold">رفض الرسوم</button>
+              </div>
+            </div>
+          )}
           {r.status === "pending" && (
             <div className="flex gap-2 mt-3">
               <button onClick={()=>decide(r,"approved")} className="bg-success/90 text-success-foreground px-3 py-1.5 rounded-lg text-sm font-bold">قبول</button>
@@ -1296,6 +1296,56 @@ function NotificationsAdmin() {
             <div className="text-xs text-muted-foreground">{r.target_user_id ? name(r.target_user_id) : ({ all: "الجميع", active: "المفعّلة", inactive: "غير المفعّلة" } as any)[r.audience] ?? "الجميع"} · {new Date(r.created_at).toLocaleString("ar")}</div>
           </div>
           <button onClick={async () => { await db.from("notifications").delete().eq("id", r.id); load(); }} className="text-xs bg-destructive/90 px-2 py-1 rounded">حذف</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TransfersAdmin() {
+  const startSupport = useServerFn(adminStartSupport);
+  const [rows, setRows] = useState<any[]>([]);
+  const [people, setPeople] = useState<Record<string, any>>({});
+  const [sel, setSel] = useState<string | null>(null);
+  const [msg, setMsg] = useState("");
+  const load = async () => {
+    const { data } = await supabase.from("transfers").select("*").order("created_at", { ascending: false }).limit(500);
+    setRows(data ?? []);
+    const ids = [...new Set((data ?? []).flatMap((t: any) => [t.from_user, t.to_user]))];
+    if (ids.length) {
+      const { data: ps } = await (supabase as any).from("profiles").select("id,full_name,email,referral_code,balance,is_banned,is_active").in("id", ids);
+      setPeople(Object.fromEntries((ps ?? []).map((p: any) => [p.id, p])));
+    }
+  };
+  useEffect(() => { void load(); }, []);
+  const nm = (id: string) => { const p = people[id]; return p ? `${p.full_name || p.email} #${p.referral_code}` : id.slice(0, 8); };
+  const u = sel ? people[sel] : null;
+  const run = async (f: () => Promise<any>, ok: string) => { try { const r = await f(); if (r?.error) throw r.error; toast.success(ok); setMsg(""); await load(); } catch (e: any) { toast.error(e.message ?? "خطأ"); } };
+  return (
+    <div className="space-y-3">
+      {u && (
+        <div className="glass rounded-xl p-4 space-y-2">
+          <div className="flex justify-between"><b>{nm(u.id)}</b><button className="text-xs" onClick={() => setSel(null)}>إغلاق</button></div>
+          <div className="text-sm">الرصيد: <b>${Number(u.balance).toFixed(2)}</b> · {u.is_banned ? <span className="text-destructive">محظور</span> : "نشط"}</div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => confirm("تصفير الرصيد؟") && run(() => supabase.from("profiles").update({ balance: 0 }).eq("id", u.id), "تم التصفير")}>تصفير الرصيد</Button>
+            <Button size="sm" variant="destructive" onClick={() => run(() => (supabase as any).from("profiles").update({ is_banned: !u.is_banned }).eq("id", u.id), u.is_banned ? "تم فك الحظر" : "تم الحظر")}>{u.is_banned ? "فك الحظر" : "حظر"}</Button>
+          </div>
+          <textarea className="w-full bg-input border border-border rounded-lg px-3 py-2 text-sm" rows={2} placeholder="نص الإشعار أو رسالة الدعم" value={msg} onChange={e => setMsg(e.target.value)} />
+          <div className="flex gap-2">
+            <Button size="sm" disabled={!msg.trim()} onClick={() => run(() => (supabase as any).from("notifications").insert({ title: "إشعار", body: msg.trim(), target_user_id: u.id }), "تم إرسال الإشعار")}>إرسال إشعار</Button>
+            <Button size="sm" variant="secondary" disabled={!msg.trim()} onClick={() => run(() => startSupport({ data: { userId: u.id, message: msg } }), "تم إرسال رسالة الدعم")}>رسالة دعم</Button>
+          </div>
+        </div>
+      )}
+      {rows.length === 0 && <Empty />}
+      {rows.map(t => (
+        <div key={t.id} className="glass rounded-xl p-3 text-sm flex flex-wrap items-center gap-2">
+          <button className="underline" onClick={() => setSel(t.from_user)}>{nm(t.from_user)}</button>
+          <span>←</span>
+          <button className="underline" onClick={() => setSel(t.to_user)}>{nm(t.to_user)}</button>
+          <b className="ms-auto">${Number(t.amount).toFixed(2)}</b>
+          <span className="text-xs text-muted-foreground w-full">{new Date(t.created_at).toLocaleString("ar")}</span>
         </div>
       ))}
     </div>
