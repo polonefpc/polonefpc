@@ -1064,6 +1064,7 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          currency: string
           fee_amount: number
           fee_notice: string
           fee_percent: number
@@ -1080,6 +1081,7 @@ export type Database = {
         Insert: {
           amount: number
           created_at?: string
+          currency?: string
           fee_amount?: number
           fee_notice?: string
           fee_percent?: number
@@ -1096,6 +1098,7 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          currency?: string
           fee_amount?: number
           fee_notice?: string
           fee_percent?: number
@@ -1173,6 +1176,7 @@ export type Database = {
             Returns: {
               amount: number
               created_at: string
+              currency: string
               fee_amount: number
               fee_notice: string
               fee_percent: number
@@ -1203,6 +1207,7 @@ export type Database = {
             Returns: {
               amount: number
               created_at: string
+              currency: string
               fee_amount: number
               fee_notice: string
               fee_percent: number
@@ -1230,6 +1235,38 @@ export type Database = {
       request_package_purchase: {
         Args: { _package_id: number; _user_id: string }
         Returns: undefined
+      }
+      request_withdrawal_v2: {
+        Args: {
+          _amount: number
+          _currency: string
+          _fee_tx: string
+          _network: string
+          _wallet: string
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          currency: string
+          fee_amount: number
+          fee_notice: string
+          fee_percent: number
+          fee_status: string
+          fee_tx: string | null
+          fee_wallet: string
+          id: string
+          network: string
+          processed_at: string | null
+          status: string
+          user_id: string
+          wallet_address: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "withdrawals"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       review_publication_task: {
         Args: { _approve: boolean; _note?: string; _submission_id: string }

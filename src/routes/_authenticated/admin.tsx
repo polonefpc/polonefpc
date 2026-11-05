@@ -197,7 +197,7 @@ function Withdrawals() {
               <div className="text-xs text-muted-foreground">{r.profiles?.email}</div>
               <div className="text-sm mt-1">المبلغ: <b>${r.amount}</b> • رصيد الحساب: ${r.profiles?.balance}</div>
               <div className="text-xs font-mono break-all mt-1">{r.wallet_address}</div>
-              <div className="mt-2 text-xs text-muted-foreground">الشبكة: {r.network} · الرسوم: {r.fee_percent}% = ${Number(r.fee_amount || 0).toFixed(2)}</div>
+              <div className="mt-2 text-xs text-muted-foreground">الشبكة: {r.network} · العملة: {r.currency ?? "USDT"} · الرسوم: {r.fee_percent}% = ${Number(r.fee_amount || 0).toFixed(2)}{r.fee_status === "skipped" && <b className="text-destructive"> · تخطّى دفع الرسوم</b>}{r.fee_status === "approved" && <b className="text-success"> · الرسوم مؤكدة</b>}</div>
             </div>
             <StatusBadge status={r.status} />
           </div>

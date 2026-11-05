@@ -6,6 +6,7 @@ import { getRewardsAdmin, manageRewards } from "@/lib/rewards.functions";
 import { Button } from "@/components/ui/button";
 import { WheelAudienceAdmin } from "@/components/wheel-audience-admin";
 import { wheelAudienceLabels } from "@/lib/wheel-audience";
+import { compressProof } from "@/lib/proof-image";
 
 type AdminData = Awaited<ReturnType<typeof getRewardsAdmin>>;
 const box = "glass rounded-xl p-3 space-y-2";
@@ -142,23 +143,33 @@ export function RewardsAdmin() {
 }
 
 export function WithdrawFeeAdmin() {
-  const [v, setV] = useState({ percent: "0", wallet: "", notice: "" });
+  const keys = ["withdraw_fee_percent", "withdraw_fee_wallet", "withdraw_fee_notice", "withdraw_fee_image", "transfer_min", "transfer_max"];
+  const [v, setV] = useState({ percent: "0", wallet: "", notice: "", image: "", tmin: "", tmax: "" });
   useEffect(() => {
-    supabase.from("settings").select("key,value").in("key", ["withdraw_fee_percent", "withdraw_fee_wallet", "withdraw_fee_notice"]).then(({ data }) => {
+    supabase.from("settings").select("key,value").in("key", keys).then(({ data }) => {
       const m = Object.fromEntries((data ?? []).map(r => [r.key, r.value]));
-      setV({ percent: m.withdraw_fee_percent ?? "0", wallet: m.withdraw_fee_wallet ?? "", notice: m.withdraw_fee_notice ?? "" });
+      setV({ percent: m.withdraw_fee_percent ?? "0", wallet: m.withdraw_fee_wallet ?? "", notice: m.withdraw_fee_notice ?? "", image: m.withdraw_fee_image ?? "", tmin: m.transfer_min ?? "", tmax: m.transfer_max ?? "" });
     });
   }, []);
+  const pickImage = async (f?: File) => {
+    if (!f) return;
+    try { setV(o => ({ ...o, image: "" })); const img = await compressProof(f); setV(o => ({ ...o, image: img })); } catch (e) { toast.error(e instanceof Error ? e.message : "تعذر تجهيز الصورة"); }
+  };
   const save = async () => {
     const p = Number(v.percent);
     if (!(p >= 0 && p <= 100)) return toast.error("النسبة بين 0 و 100");
+    const mn = Number(v.tmin || 0), mx = Number(v.tmax || 0);
+    if (mn < 0 || mx < 0 || (mx > 0 && mn > mx)) return toast.error("حدود التحويل غير صحيحة");
     const now = new Date().toISOString();
     const { error } = await supabase.from("settings").upsert([
       { key: "withdraw_fee_percent", value: String(p), updated_at: now },
       { key: "withdraw_fee_wallet", value: v.wallet.trim(), updated_at: now },
       { key: "withdraw_fee_notice", value: v.notice, updated_at: now },
+      { key: "withdraw_fee_image", value: v.image, updated_at: now },
+      { key: "transfer_min", value: mn ? String(mn) : "", updated_at: now },
+      { key: "transfer_max", value: mx ? String(mx) : "", updated_at: now },
     ]);
-    if (error) toast.error(error.message); else toast.success("تم حفظ رسوم السحب");
+    if (error) toast.error(error.message); else toast.success("تم الحفظ");
   };
   return (
     <div className={box}>
@@ -167,9 +178,17 @@ export function WithdrawFeeAdmin() {
         <input className={input} type="number" step="0.1" min={0} max={100} value={v.percent} onChange={e => setV({ ...v, percent: e.target.value })} /></label>
       <label className="block text-sm space-y-1"><span>رقم المحفظة لاستلام الرسوم</span>
         <input className={input} dir="ltr" value={v.wallet} onChange={e => setV({ ...v, wallet: e.target.value })} /></label>
-      <label className="block text-sm space-y-1"><span>التنبيه الذي يظهر للعميل</span>
+      <label className="block text-sm space-y-1"><span>صورة المحفظة (QR)</span>
+        <input className={input} type="file" accept="image/*" onChange={e => void pickImage(e.target.files?.[0])} /></label>
+      {v.image && <div className="flex items-center gap-2"><img src={v.image} alt="صورة المحفظة" className="h-20 rounded" /><Button size="sm" variant="ghost" onClick={() => setV({ ...v, image: "" })}>إزالة</Button></div>}
+      <label className="block text-sm space-y-1"><span>وصف/تنبيه الرسوم الذي يظهر للعميل</span>
         <textarea className={input} rows={3} value={v.notice} onChange={e => setV({ ...v, notice: e.target.value })} /></label>
       <p className="text-xs text-muted-foreground">مثال: نسبة 5% وسحب 100$ = رسوم 5$.</p>
+      <div className="font-bold pt-2">حدود التحويل بين الحسابات (فارغ = بدون حد)</div>
+      <div className="grid grid-cols-2 gap-2">
+        <input className={input} type="number" min={0} placeholder="الحد الأدنى $" value={v.tmin} onChange={e => setV({ ...v, tmin: e.target.value })} />
+        <input className={input} type="number" min={0} placeholder="الحد الأقصى $" value={v.tmax} onChange={e => setV({ ...v, tmax: e.target.value })} />
+      </div>
       <button onClick={save} className="btn-primary px-4 py-2 rounded-lg font-bold text-sm">حفظ</button>
     </div>
   );

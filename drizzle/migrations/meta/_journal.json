@@ -43,6 +43,13 @@
       "when": 1793669589568,
       "tag": "0005_account_bans",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793842953131,
+      "tag": "0006_withdraw_v2_transfer_limits",
+      "breakpoints": true
     }
   ]
 }
