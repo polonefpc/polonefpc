@@ -22,6 +22,9 @@ const packageChangeDecisionSchema = z.object({
 });
 
 function friendlyError(message: string) {
+  const mn = message.match(/transfer_below_min:([\d.]+)/); if (mn) return `الحد الأدنى للتحويل ${mn[1]}$`;
+  const mx = message.match(/transfer_above_max:([\d.]+)/); if (mx) return `الحد الأقصى للتحويل ${mx[1]}$`;
+  if (message.includes("sender_banned")) return "الحساب محظور";
   if (message.includes("receiver_not_found")) return "المستلم غير موجود";
   if (message.includes("receiver_not_active")) return "حساب المستلم غير مفعّل";
   if (message.includes("sender_not_active")) return "حسابك غير مفعّل — فعّل باقتك أولاً";
