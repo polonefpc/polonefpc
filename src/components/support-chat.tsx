@@ -44,6 +44,27 @@ function AutoReplies() {
   </details>;
 }
 
+const ST: Record<string, string> = { pending: 'قيد المراجعة', approved: 'مقبول', rejected: 'مرفوض', fee_pending: 'بانتظار الرسوم', completed: 'مكتمل' };
+function CustomerInfo({ details }: { details: Awaited<ReturnType<typeof supportCustomer>> | null }) {
+  const [tab, setTab] = useState<'info' | 'transfers' | 'withdrawals' | 'deposits' | 'logs' | 'yields'>('info');
+  if (!details) return <div className="border-b border-border bg-secondary/40 p-4"><LoaderCircle className="mx-auto animate-spin" /></div>;
+  const p: any = details.profile;
+  const row = 'flex justify-between gap-2 border-b border-border py-1.5 text-xs';
+  const tabs = [['info', 'الحساب'], ['transfers', `التحويلات (${details.transfers.length})`], ['withdrawals', `السحوبات (${details.withdrawals.length})`], ['deposits', `الإيداعات (${details.deposits.length})`], ['logs', `كل العمليات (${details.logs.length})`], ['yields', `الربح اليومي (${details.yields.length})`]] as const;
+  return <div className="max-h-[45%] min-h-40 overflow-y-auto border-b border-border bg-secondary/40 text-sm">
+    <div className="sticky top-0 z-10 flex gap-1 overflow-x-auto bg-secondary/90 p-2 backdrop-blur">{tabs.map(([k, l]) => <button key={k} onClick={() => setTab(k)} className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${tab === k ? 'bg-primary text-primary-foreground' : 'bg-card'}`}>{l}</button>)}</div>
+    <div className="p-3">
+      {tab === 'info' && <><dl className="grid grid-cols-1 gap-1.5 sm:grid-cols-2"><div>الاسم: {p.full_name || '—'}</div><div>رقم الحساب: {p.referral_code}</div><div className="break-all">البريد: {p.email}</div><div>الرصيد: ${Number(p.balance).toFixed(2)}</div><div>الباقة: {p.packages?.name || 'بدون باقة'}</div><div>الحالة: {p.is_banned ? <b className="text-destructive">محظور</b> : p.is_active ? <span className="text-success">مفعّل</span> : 'غير مفعّل'}</div><div>الإحالات: {p.referral_count}</div><div>إنشاء الحساب: {new Date(p.created_at).toLocaleString('ar-IQ')}</div></dl>
+        <h3 className="mt-3 text-xs font-bold">الإحالات</h3>{details.referrals.length ? details.referrals.map((r: any) => <p className="text-xs" key={r.id}>{r.full_name || 'عميل'} · {r.is_active ? 'مفعّل' : 'غير مفعّل'}</p>) : <p className="text-xs text-muted-foreground">لا يوجد</p>}</>}
+      {tab === 'transfers' && (details.transfers.length ? details.transfers.map(t => <div key={t.id} className={row}><span>{t.dir === 'in' ? 'من' : 'إلى'} {t.other}<br /><span className="text-muted-foreground">{time(t.at)}</span></span><b className={t.dir === 'in' ? 'text-success' : 'text-destructive'}>{t.dir === 'in' ? '+' : '−'}${t.amount.toFixed(2)}</b></div>) : <p className="text-xs text-muted-foreground">لا توجد تحويلات</p>)}
+      {tab === 'withdrawals' && (details.withdrawals.length ? details.withdrawals.map(w => <div key={w.id} className={row}><span>{w.network} · {w.currency} · {ST[w.status] ?? w.status}{w.fee_status === 'skipped' && ' · تخطّى الرسوم'}<br /><span className="text-muted-foreground">{time(w.created_at)}</span></span><b className="text-destructive">−${Number(w.amount).toFixed(2)}</b></div>) : <p className="text-xs text-muted-foreground">لا توجد سحوبات</p>)}
+      {tab === 'deposits' && (details.deposits.length ? details.deposits.map(d => <div key={d.id} className={row}><span>{ST[d.status] ?? d.status} · <span dir="ltr" className="break-all">{d.tx_hash || '—'}</span><br /><span className="text-muted-foreground">{time(d.created_at)}</span></span><b className="text-success">${Number(d.amount).toFixed(2)}</b></div>) : <p className="text-xs text-muted-foreground">لا توجد إيداعات</p>)}
+      {tab === 'logs' && (details.logs.length ? details.logs.map(l => <div key={l.id} className={row}><span>{l.note || l.source}<br /><span className="text-muted-foreground">{time(l.created_at)}</span></span><b className={Number(l.amount) < 0 ? 'text-destructive' : 'text-success'}>{Number(l.amount) < 0 ? '' : '+'}${Number(l.amount).toFixed(2)}</b></div>) : <p className="text-xs text-muted-foreground">لا توجد عمليات</p>)}
+      {tab === 'yields' && (details.yields.length ? details.yields.map(y => <div key={y.id} className={row}><span>{y.applied_on}</span><b className="text-success">+${Number(y.amount).toFixed(2)}</b></div>) : <p className="text-xs text-muted-foreground">لا يوجد</p>)}
+    </div>
+  </div>;
+}
+
 export function SupportChat({ admin = false }: { admin?: boolean }) {
   const [open, setOpen] = useState(admin);
   const [uid, setUid] = useState('');
@@ -58,6 +79,7 @@ export function SupportChat({ admin = false }: { admin?: boolean }) {
   const [ready, setReady] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
   const [fresh, setFresh] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
   const [details, setDetails] = useState<Awaited<ReturnType<typeof supportCustomer>> | null>(null);
   const getDetails = useServerFn(supportCustomer);
   const bottom = useRef<HTMLDivElement>(null);
@@ -146,6 +168,17 @@ export function SupportChat({ admin = false }: { admin?: boolean }) {
     setSelected(null); setMessages([]); await load(); toast.success('تم حذف السجل');
   };
 
+  const bulkDelete = async (all: boolean) => {
+    const ids = all ? conversations.map(c => c.id) : [...picked];
+    if (!ids.length || !window.confirm(all ? `حذف جميع سجلات الدردشة (${ids.length}) نهائياً من المنصة؟` : `حذف ${ids.length} من السجلات المحددة نهائياً؟`)) return;
+    setBusy(true);
+    const { error } = await supabase.from('support_conversations').delete().in('id', ids);
+    setBusy(false);
+    if (error) return toast.error('تعذر الحذف');
+    setPicked(new Set()); if (selected && ids.includes(selected)) setSelected(null); await load(); toast.success('تم حذف السجلات');
+  };
+  const togglePick = (id: string) => setPicked(old => { const n = new Set(old); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
   if (!open) return <Button onClick={() => setOpen(true)} className="fixed bottom-28 end-4 z-40 h-12 w-12 rounded-full shadow-lg" size="icon" aria-label="الدعم المباشر" title="الدعم المباشر"><MessageCircle />{unread > 0 && <span className="absolute -top-1 -end-1 grid size-5 place-items-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">{unread}</span>}</Button>;
 
   const name = current ? (admin ? current.profiles?.full_name || 'عميل' : 'فريق الدعم') : 'الدعم المباشر';
@@ -160,11 +193,7 @@ export function SupportChat({ admin = false }: { admin?: boolean }) {
       {!admin && <Button size="sm" variant="ghost" onClick={() => setFresh(true)}>دردشة جديدة</Button>}
       {!admin && <Button size="icon" variant="ghost" onClick={() => setOpen(false)} aria-label="إغلاق الدعم"><X /></Button>}
     </header>
-    {admin && showInfo && <div className="max-h-72 overflow-y-auto border-b border-border bg-secondary/40 p-3 text-sm">{!details ? <LoaderCircle className="mx-auto animate-spin" /> : <>
-      <dl className="grid grid-cols-1 gap-1.5 sm:grid-cols-2"><div>الاسم: {details.profile.full_name || '—'}</div><div>رمز الإحالة: {details.profile.referral_code}</div><div className="break-all">البريد: {details.profile.email}</div><div>الرصيد: ${Number(details.profile.balance).toFixed(2)}</div><div>الباقة: {details.profile.packages?.name || 'بدون باقة'}</div><div>الإحالات: {details.profile.referral_count}</div><div className="sm:col-span-2">إنشاء الحساب: {new Date(details.profile.created_at).toLocaleString('ar-IQ')}</div></dl>
-      <h3 className="mt-3 text-xs font-bold">الإحالات</h3>{details.referrals.map(r => <p className="text-xs" key={r.id}>{r.full_name || 'عميل'} · {r.is_active ? 'مفعّل' : 'غير مفعّل'}</p>)}
-      <h3 className="mt-3 text-xs font-bold">سجل الربح اليومي ({details.yields.length})</h3>{details.yields.map(y => <div key={y.id} className="flex justify-between border-b border-border py-1 text-xs"><span>{y.applied_on}</span><span className="text-success">+${Number(y.amount).toFixed(2)}</span></div>)}
-    </>}</div>}
+    {admin && showInfo && <CustomerInfo details={details} />}
     <div className="support-thread min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-3" aria-live="polite">
       <div className="mx-auto max-w-[90%] rounded-xl bg-card px-3 py-2 text-center text-xs text-muted-foreground"><b className="block text-foreground">{current.category}</b><span className="whitespace-pre-wrap break-words">{current.description}</span></div>
       {messages.map(m => {
@@ -194,14 +223,21 @@ export function SupportChat({ admin = false }: { admin?: boolean }) {
     <AutoReplies />
     <section aria-label="الدعم المباشر" className="flex h-[70vh] min-h-[480px] overflow-hidden rounded-xl border border-border bg-background">
       <aside className={`${current ? 'hidden md:flex' : 'flex'} w-full flex-col border-e border-border md:w-72`}>
-        <div className="border-b border-border p-3 font-bold">المحادثات ({conversations.length})</div>
+        <div className="space-y-2 border-b border-border p-3">
+          <div className="flex items-center justify-between font-bold"><span>التذاكر ({conversations.length})</span>{unread > 0 && <span className="rounded-full bg-destructive px-2 text-xs text-destructive-foreground">{unread} غير مقروءة</span>}</div>
+          {conversations.length > 0 && <div className="flex flex-wrap items-center gap-2 text-xs">
+            <label className="flex items-center gap-1"><input type="checkbox" checked={picked.size === conversations.length} onChange={e => setPicked(e.target.checked ? new Set(conversations.map(c => c.id)) : new Set())} />تحديد الكل</label>
+            <Button size="sm" variant="outline" className="h-7 text-destructive" disabled={busy || !picked.size} onClick={() => bulkDelete(false)}><Trash2 />حذف المحدد ({picked.size})</Button>
+            <Button size="sm" variant="ghost" className="h-7 text-destructive" disabled={busy} onClick={() => bulkDelete(true)}>حذف الجميع</Button>
+          </div>}
+        </div>
         <div className="flex-1 overflow-y-auto">
           {!ready && <LoaderCircle className="mx-auto mt-6 animate-spin" />}
           {ready && !conversations.length && <p className="p-4 text-sm text-muted-foreground">لا توجد محادثات مفتوحة</p>}
-          {conversations.map(c => <button key={c.id} onClick={() => setSelected(c.id)} className={`flex w-full items-center gap-3 border-b border-border px-3 py-3 text-start transition-colors hover:bg-secondary ${c.id === selected ? 'bg-secondary' : ''} ${isUnread(c) ? 'bg-primary/10' : ''}`}>
+          {conversations.map(c => <div key={c.id} className="flex items-center border-b border-border"><input type="checkbox" aria-label="تحديد المحادثة" className="ms-3 shrink-0" checked={picked.has(c.id)} onChange={() => togglePick(c.id)} /><button onClick={() => setSelected(c.id)} className={`flex min-w-0 flex-1 items-center gap-3 px-3 py-3 text-start transition-colors hover:bg-secondary ${c.id === selected ? 'bg-secondary' : ''} ${isUnread(c) ? 'bg-primary/10' : ''}`}>
             <div className="grid size-10 shrink-0 place-items-center rounded-full bg-primary/15 font-bold text-primary">{(c.profiles?.full_name || 'ع').slice(0, 1)}</div>
             <div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><span className="truncate text-sm font-semibold">{c.profiles?.full_name || 'عميل'}</span><span className="shrink-0 text-[10px] text-muted-foreground">{time(c.updated_at)}</span></div><div className="flex justify-between gap-2 text-xs text-muted-foreground"><span className="truncate">{c.category}</span>{c.status === 'closed' ? <span className="text-success">مكتملة</span> : isUnread(c) && <span className="size-2.5 rounded-full bg-destructive" />}</div></div>
-          </button>)}
+          </button></div>)}
         </div>
       </aside>
       <div className={`${current ? 'flex' : 'hidden md:flex'} min-w-0 flex-1 flex-col`}>{thread || <div className="m-auto text-center text-muted-foreground"><MessageCircle className="mx-auto mb-2 size-10 opacity-40" />اختر محادثة لعرضها</div>}</div>
