@@ -600,46 +600,57 @@ export function DepositTab({ reload }: any) {
 }
 
 
+const NETWORKS: Record<string, { label: string; currencies: string[] }> = {
+  TRON: { label: "TRON · TRC20", currencies: ["USDT", "TRX"] },
+  BNB: { label: "BNB Smart Chain · BEP20", currencies: ["USDT", "USDC", "BNB"] },
+  ETHEREUM: { label: "Ethereum · ERC20", currencies: ["USDT", "USDC", "ETH"] },
+  SOLANA: { label: "Solana · SPL", currencies: ["USDT", "USDC", "SOL"] },
+};
+
 export function WithdrawTab({ profile, reload }: any) {
-  const [mode, setMode] = useState<"withdraw" | "transfer">("withdraw");
+  const [mode, setMode] = useState<"withdraw" | "transfer" | null>(null);
   const [wallet, setWallet] = useState("");
   const [toCode, setToCode] = useState("");
   const [amt, setAmt] = useState("");
-  const [withdrawDesc, setWithdrawDesc] = useState("");
-  const [showWithdrawDesc, setShowWithdrawDesc] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [fee, setFee] = useState({ percent: 0, wallet: "", notice: "" });
+  const [currency, setCurrency] = useState("USDT");
   const [network, setNetwork] = useState<"TRON" | "BNB" | "ETHEREUM" | "SOLANA">("TRON");
-  const [receipt, setReceipt] = useState<{ amount: number; network: string; fee_percent: number; fee_amount: number; fee_wallet: string; fee_notice: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [cfg, setCfg] = useState<Record<string, string>>({});
+  const [feeStep, setFeeStep] = useState(false);
+  const [feeTx, setFeeTx] = useState("");
+  const [done, setDone] = useState<string | null>(null);
   const requestWithdrawalFn = useServerFn(requestWithdrawal);
   const transferPointsFn = useServerFn(transferPoints);
   const active = !!profile?.is_active;
-  const withdrawInfo = withdrawDesc || "اختر شبكة السحب المطابقة لمحفظتك. الحد الأدنى للسحب 49$.";
+  const pct = Math.max(0, Number(cfg.withdraw_fee_percent ?? 0) || 0);
+  const a = Number(amt) || 0;
+  const feeAmount = Math.round(a * pct) / 100;
+  const tMin = Number(cfg.transfer_min) || 0, tMax = Number(cfg.transfer_max) || 0;
 
   useEffect(() => {
-    supabase.from("settings").select("value").eq("key", "withdraw_description").maybeSingle()
-      .then(({ data }) => setWithdrawDesc(data?.value ?? ""));
-    supabase.from("settings").select("key,value").in("key", ["withdraw_fee_percent", "withdraw_fee_wallet", "withdraw_fee_notice"])
-      .then(({ data }) => {
-        const m = Object.fromEntries((data ?? []).map(r => [r.key, r.value]));
-        setFee({ percent: Math.max(0, Number(m.withdraw_fee_percent ?? 0) || 0), wallet: m.withdraw_fee_wallet ?? "", notice: m.withdraw_fee_notice ?? "" });
-      });
+    supabase.from("settings").select("key,value").in("key", ["withdraw_description", "withdraw_fee_percent", "withdraw_fee_wallet", "withdraw_fee_notice", "withdraw_fee_image", "transfer_min", "transfer_max"])
+      .then(({ data }) => setCfg(Object.fromEntries((data ?? []).map(r => [r.key, r.value]))));
   }, []);
+  useEffect(() => { if (!NETWORKS[network].currencies.includes(currency)) setCurrency(NETWORKS[network].currencies[0]); }, [network]);
 
-  const submitWithdraw = async () => {
+  const copy = async (v: string) => { try { await navigator.clipboard.writeText(v); toast.success("تم النسخ"); } catch { toast.error("تعذر النسخ"); } };
+
+  const validateWithdraw = () => {
     if (!active) { toast.error("حسابك غير مفعّل — لا يمكن السحب"); return; }
-    const a = Number(amt);
     if (!a || a < 49) { toast.error("الحد الأدنى للسحب 49$"); return; }
-    if (!wallet.trim()) { toast.error("أدخل عنوان المحفظة"); return; }
+    if (wallet.trim().length < 20) { toast.error("أدخل عنوان محفظة صحيح"); return; }
     if (a > Number(profile?.balance ?? 0)) { toast.error("رصيد غير كافٍ"); return; }
+    if (pct > 0) { setFeeTx(""); setFeeStep(true); } else void sendWithdraw("");
+  };
+
+  const sendWithdraw = async (tx: string) => {
+    if (tx && tx.trim().length < 6) { toast.error("أدخل رقم معاملة الرسوم"); return; }
     setLoading(true);
-    setReceipt(null);
     try {
-      const result = await requestWithdrawalFn({ data: { amount: a, wallet: wallet.trim(), network } });
+      const result = await requestWithdrawalFn({ data: { amount: a, wallet: wallet.trim(), network, currency: currency as any, feeTx: tx.trim() || undefined } });
       if (!result.ok) { toast.error(result.error); return; }
-      const r = result.request;
-      if (!r) throw new Error("لم يتم استلام الطلب");
-      setReceipt({ amount: Number(r.amount), network: r.network, fee_percent: Number(r.fee_percent), fee_amount: Number(r.fee_amount), fee_wallet: r.fee_wallet, fee_notice: r.fee_notice });
+      setFeeStep(false);
+      setDone(tx ? "تم إرسال الرسوم وطلب السحب — بانتظار تأكيد الإدارة" : "تم إرسال طلب السحب — قيد المراجعة");
       toast.success("تم إرسال طلب السحب");
       setWallet(""); setAmt(""); reload();
     } catch { toast.error("تعذر إرسال طلب السحب، تحقق من الاتصال وحاول مجدداً"); }
@@ -648,10 +659,11 @@ export function WithdrawTab({ profile, reload }: any) {
 
   const submitTransfer = async () => {
     if (!active) { toast.error("حسابك غير مفعّل — لا يمكن التحويل"); return; }
-    const a = Number(amt);
     if (!a || a <= 0) { toast.error("أدخل مبلغاً صحيحاً"); return; }
+    if (tMin > 0 && a < tMin) { toast.error(`الحد الأدنى للتحويل ${tMin}$`); return; }
+    if (tMax > 0 && a > tMax) { toast.error(`الحد الأقصى للتحويل ${tMax}$`); return; }
     if (a > Number(profile?.balance ?? 0)) { toast.error("رصيد غير كافٍ"); return; }
-    if (!/^\d{5}$/.test(toCode.trim())) { toast.error("أدخل رمز إحالة من 5 أرقام"); return; }
+    if (!/^\d{5}$/.test(toCode.trim())) { toast.error("أدخل رقم حساب من 5 أرقام"); return; }
     setLoading(true);
     const result = await transferPointsFn({ data: { toCode: toCode.trim(), amount: a } });
     setLoading(false);
@@ -660,50 +672,58 @@ export function WithdrawTab({ profile, reload }: any) {
     setAmt(""); setToCode(""); reload();
   };
 
+  const field = "w-full bg-input border border-border rounded-xl px-4 py-3";
   return (
     <div className="space-y-4">
-      {!active && (
-        <div className="glass rounded-2xl p-4 border border-destructive/40 text-sm text-destructive">
-          حسابك غير مفعّل. لا يمكنك السحب أو التحويل قبل تفعيل باقة من «الباقات».
-        </div>
-      )}
-      <div className="glass rounded-2xl p-2 flex">
-        <button onClick={()=>setMode("withdraw")} className={`flex-1 py-2.5 rounded-xl font-bold text-sm ${mode==="withdraw"?"btn-primary":"text-muted-foreground"}`}>سحب</button>
-        <button onClick={()=>setMode("transfer")} className={`flex-1 py-2.5 rounded-xl font-bold text-sm ${mode==="transfer"?"btn-primary":"text-muted-foreground"}`}>تحويل</button>
-      </div>
-
+      {!active && <div className="glass rounded-2xl p-4 border border-destructive/40 text-sm text-destructive">حسابك غير مفعّل. لا يمكنك السحب أو التحويل قبل تفعيل باقة من «الباقات».</div>}
       <div className="glass rounded-3xl p-6">
         <div className="text-xs text-muted-foreground">رصيدك الحالي</div>
         <div className="text-3xl font-black text-gradient">${Number(profile?.balance ?? 0).toFixed(2)}</div>
-        <div className="mt-4 space-y-3">
-          {mode === "withdraw" ? (
-            <>
-              <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-                <span className="font-bold">تأكد أن شبكة السحب مطابقة لشبكة محفظتك.</span>
-              </div>
-              <div className="space-y-2">
-                <button type="button" onClick={() => setShowWithdrawDesc(v => !v)} className="glass px-3 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-2">
-                  <Info className="w-4 h-4 text-primary" /> وصف عملية السحب
-                </button>
-                {showWithdrawDesc && <div className="rounded-xl bg-secondary/40 px-4 py-3 text-xs leading-6 text-muted-foreground whitespace-pre-line">{withdrawInfo}</div>}
-              </div>
-              <label className="block space-y-2 text-sm"><span>شبكة السحب</span><select aria-label="شبكة السحب" className="reward-input" value={network} onChange={e => setNetwork(e.target.value as typeof network)}><option value="TRON">TRON · TRC20</option><option value="BNB">BNB Smart Chain · BEP20</option><option value="ETHEREUM">Ethereum · ERC20</option><option value="SOLANA">Solana · SPL</option></select></label>
-              <input aria-label="عنوان محفظة السحب" className="w-full bg-input border border-border rounded-xl px-4 py-3" placeholder="عنوان المحفظة على الشبكة المختارة"
-                value={wallet} onChange={e=>setWallet(e.target.value)} />
-            </>
-          ) : (
-            <input inputMode="numeric" maxLength={5} className="w-full bg-input border border-border rounded-xl px-4 py-3 text-center tracking-widest text-lg font-bold"
-              placeholder="رمز المستلم (5 أرقام)" value={toCode} onChange={e=>setToCode(e.target.value.replace(/\D/g,""))} />
-          )}
-          <input type="number" step="0.01" min={mode==="withdraw"?49:0.01} className="w-full bg-input border border-border rounded-xl px-4 py-3"
-            placeholder={mode==="withdraw" ? "المبلغ (الحد الأدنى 49$)" : "المبلغ"} value={amt} onChange={e=>setAmt(e.target.value)} />
-          <Button disabled={loading || !active} onClick={mode === "withdraw" ? submitWithdraw : submitTransfer} className="w-full h-12">{loading ? "جارٍ إرسال الطلب…" : mode === "withdraw" ? "إرسال طلب السحب" : "تحويل النقاط"}</Button>
-          {mode === "withdraw" && receipt && <div role="status" className="space-y-3 rounded-lg border border-success/40 bg-success/10 p-4 text-sm"><h3 className="font-bold text-success">تم إرسال طلب السحب — قيد المراجعة</h3><div>المبلغ: ${receipt.amount.toFixed(2)} · {receipt.network}</div><div>نسبة رسوم السحب: <b>{receipt.fee_percent}%</b></div><div>الرسوم المطلوبة: <b>${receipt.fee_amount.toFixed(2)}</b></div>{receipt.fee_amount > 0 && receipt.fee_wallet && <div><p className="mb-2 text-xs text-muted-foreground">محفظة استلام الرسوم</p><div className="flex items-center gap-2 rounded-md bg-input p-2"><span dir="ltr" className="min-w-0 flex-1 break-all text-xs">{receipt.fee_wallet}</span><Button size="icon" variant="ghost" aria-label="نسخ محفظة الرسوم" onClick={async () => { try { await navigator.clipboard.writeText(receipt.fee_wallet); toast.success("تم نسخ المحفظة"); } catch { toast.error("تعذر النسخ"); } }}><Copy /></Button></div></div>}{receipt.fee_notice && <p className="whitespace-pre-wrap text-muted-foreground">{receipt.fee_notice}</p>}</div>}
-          {mode === "withdraw" && !receipt && fee.percent > 0 && <p className="text-xs text-muted-foreground">رسوم السحب: {fee.percent}%، تظهر تفاصيلها بعد إرسال الطلب.</p>}
-          <p className="text-xs text-muted-foreground">الحد الأدنى للسحب 49$ ولا يوجد حد أعلى. اختر الشبكة المطابقة للمحفظة، والتحويل متاح فقط بين الحسابات المفعّلة.</p>
-        </div>
       </div>
+      <div className="grid grid-cols-2 gap-3">
+        {(["transfer", "withdraw"] as const).map(m => (
+          <button key={m} onClick={() => { setMode(m); setDone(null); setAmt(""); }} className={`glass rounded-2xl p-5 flex flex-col items-center gap-2 font-bold transition ${mode === m ? "ring-2 ring-primary" : ""}`}>
+            {m === "withdraw" ? <ArrowUpFromLine className="w-7 h-7 text-primary" /> : <Send className="w-7 h-7 text-primary" />}
+            {m === "withdraw" ? "السحب" : "التحويل"}
+          </button>
+        ))}
+      </div>
+
+      {mode === "withdraw" && <div className="glass rounded-3xl p-6 space-y-3">
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive flex items-start gap-2"><AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" /><span className="font-bold">تأكد أن الشبكة والعملة مطابقتان لمحفظتك.</span></div>
+        {cfg.withdraw_description && <p className="rounded-xl bg-secondary/40 px-4 py-3 text-xs leading-6 text-muted-foreground whitespace-pre-line">{cfg.withdraw_description}</p>}
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block space-y-1 text-sm"><span>الشبكة</span><select aria-label="الشبكة" className="reward-input" value={network} onChange={e => setNetwork(e.target.value as typeof network)}>{Object.entries(NETWORKS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label>
+          <label className="block space-y-1 text-sm"><span>العملة</span><select aria-label="العملة" className="reward-input" value={currency} onChange={e => setCurrency(e.target.value)}>{NETWORKS[network].currencies.map(c => <option key={c}>{c}</option>)}</select></label>
+        </div>
+        <input aria-label="رقم المحفظة" dir="ltr" className={field} placeholder="رقم المحفظة" value={wallet} onChange={e => setWallet(e.target.value)} />
+        <input aria-label="المبلغ" type="number" step="0.01" min={49} className={field} placeholder="المبلغ (الحد الأدنى 49$)" value={amt} onChange={e => setAmt(e.target.value)} />
+        <Button disabled={loading || !active} onClick={validateWithdraw} className="w-full h-12">{loading ? "جارٍ الإرسال…" : "إرسال طلب السحب"}</Button>
+        {done && <div role="status" className="rounded-lg border border-success/40 bg-success/10 p-4 text-sm font-bold text-success">{done}</div>}
+      </div>}
+
+      {mode === "transfer" && <div className="glass rounded-3xl p-6 space-y-3">
+        <input aria-label="رقم الحساب" inputMode="numeric" maxLength={5} className={`${field} text-center tracking-widest text-lg font-bold`} placeholder="رقم الحساب (5 أرقام)" value={toCode} onChange={e => setToCode(e.target.value.replace(/\D/g, ""))} />
+        <input aria-label="مبلغ التحويل" type="number" step="0.01" min={tMin || 0.01} className={field} placeholder="المبلغ" value={amt} onChange={e => setAmt(e.target.value)} />
+        {(tMin > 0 || tMax > 0) && <p className="text-xs text-muted-foreground">{tMin > 0 && `الحد الأدنى ${tMin}$`}{tMin > 0 && tMax > 0 && " · "}{tMax > 0 && `الحد الأقصى ${tMax}$`}</p>}
+        <Button disabled={loading || !active} onClick={submitTransfer} className="w-full h-12">{loading ? "جارٍ التحويل…" : "تحويل"}</Button>
+      </div>}
+
+      {feeStep && <div role="dialog" aria-modal aria-label="رسوم السحب" className="fixed inset-0 z-50 grid place-items-center bg-background/80 p-4 backdrop-blur-sm">
+        <div className="glass w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl p-5 space-y-3 text-sm">
+          <h3 className="text-lg font-black">رسوم عملية السحب</h3>
+          <div className="grid grid-cols-2 gap-2 rounded-xl bg-secondary/40 p-3"><span>المبلغ</span><b className="text-end">${a.toFixed(2)} {currency}</b><span>نسبة الرسوم</span><b className="text-end">{pct}%</b><span>الرسوم المطلوبة</span><b className="text-end text-primary">${feeAmount.toFixed(2)}</b></div>
+          {cfg.withdraw_fee_image && <img src={cfg.withdraw_fee_image} alt="محفظة الرسوم" className="mx-auto max-h-56 rounded-xl bg-card object-contain" />}
+          {cfg.withdraw_fee_wallet && <div><p className="mb-1 text-xs text-muted-foreground">محفظة استلام الرسوم</p><div className="flex items-center gap-2 rounded-xl bg-input p-2"><span dir="ltr" className="min-w-0 flex-1 break-all text-xs">{cfg.withdraw_fee_wallet}</span><Button size="icon" variant="ghost" aria-label="نسخ محفظة الرسوم" onClick={() => copy(cfg.withdraw_fee_wallet)}><Copy /></Button></div></div>}
+          {cfg.withdraw_fee_notice && <p className="whitespace-pre-wrap text-muted-foreground">{cfg.withdraw_fee_notice}</p>}
+          <input aria-label="رقم معاملة الرسوم" dir="ltr" className={field} placeholder="رقم معاملة دفع الرسوم (TxID)" value={feeTx} onChange={e => setFeeTx(e.target.value)} />
+          <div className="grid grid-cols-2 gap-2">
+            <Button variant="outline" disabled={loading} onClick={() => sendWithdraw("")}>تخطي</Button>
+            <Button disabled={loading || feeTx.trim().length < 6} onClick={() => sendWithdraw(feeTx)}>{loading ? "جارٍ…" : "إرسال الرسوم"}</Button>
+          </div>
+          <button className="w-full text-xs text-muted-foreground" onClick={() => setFeeStep(false)}>إلغاء</button>
+        </div>
+      </div>}
     </div>
   );
 }
