@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { House as Home, ArrowDownLeft as ArrowDownToLine, ArrowUpRight as ArrowUpFromLine, MapPinned as MapPin, Layers3 as Package, UsersRound as Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, WalletCards as Wallet, AlertTriangle, Info, ChevronUp, ChevronDown, X, BellRing as Bell, Sparkles as Gift } from "lucide-react";
+import { House as Home, ArrowDownLeft as ArrowDownToLine, ArrowUpRight as ArrowUpFromLine, MapPinned as MapPin, Layers3 as Package, UsersRound as Share2, LogOut, Crown, Shield, Eye, EyeOff, Copy, WalletCards as Wallet, AlertTriangle, Info, ChevronUp, ChevronDown, X, BellRing as Bell, Sparkles as Gift, Send } from "lucide-react";
 import { toast } from "sonner";
 import type { Role } from "@/lib/auth";
 import { requestPackagePurchase, transferPoints } from "@/lib/trading.functions";
