@@ -13,9 +13,10 @@ import { Button } from "@/components/ui/button";
 import { requestWithdrawal } from "@/lib/withdrawal.functions";
 import { BrandLogo } from "@/components/brand-logo";
 import { RewardsClient } from "@/components/rewards-client";
+import { TeamClient } from "@/components/team-client";
 import { MarketIndicator, type SignalPoint } from "@/components/market-indicator";
 
-type Tab = "home" | "deposit" | "withdraw" | "local" | "shop" | "referral" | "notifications" | "rewards";
+type Tab = "home" | "deposit" | "withdraw" | "local" | "shop" | "referral" | "notifications" | "rewards" | "team";
 const EARNING_LABELS: Record<string, string> = { yield: "ربح يومي", wheel: "ربح من عجلة الحظ", task: "مكافأة مهمة", welcome: "بونص ترحيبي", gift: "هدية المنصة", deposit: "إيداع", referral: "مكافأة الإحالات", agent: "شحن من وكيل", transfer: "تحويل مستلم", withdraw: "سحب" };
 
 const TABS: { id: Tab; label: string; icon: typeof Home }[] = [
@@ -33,13 +34,13 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
   const [tab, setTab] = useState<Tab>("home");
   const [unread, setUnread] = useState(0);
   const [visibleTabs, setVisibleTabs] = useState<Record<Tab, boolean>>({
-    home: true, deposit: true, withdraw: true, local: true, shop: true, referral: true, notifications: true, rewards: true,
+    home: true, deposit: true, withdraw: true, local: true, shop: true, referral: true, notifications: true, rewards: true, team: false,
   });
   const nav = useNavigate();
 
   useEffect(() => {
     supabase.from("settings").select("key,value").in("key", [
-      "tab_deposit_visible", "tab_withdraw_visible", "tab_local_visible", "tab_shop_visible", "tab_referral_visible",
+      "tab_deposit_visible", "tab_withdraw_visible", "tab_local_visible", "tab_shop_visible", "tab_referral_visible", "tab_rewards_visible", "tab_notifications_visible", "tab_team_visible",
     ]).then(({ data }) => {
       const values = Object.fromEntries((data ?? []).map(row => [row.key, row.value]));
       const next: Record<Tab, boolean> = {
@@ -49,8 +50,9 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
         local: (values.tab_local_visible ?? "true") === "true",
         shop: (values.tab_shop_visible ?? "true") === "true",
         referral: (values.tab_referral_visible ?? "true") === "true",
-        notifications: true,
-        rewards: true,
+        notifications: (values.tab_notifications_visible ?? "true") === "true",
+        rewards: (values.tab_rewards_visible ?? "true") === "true",
+        team: (values.tab_team_visible ?? "true") === "true",
       };
       setVisibleTabs(next);
       setTab(current => next[current] ? current : "home");
@@ -95,11 +97,16 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
       </header>
 
       <ClientNotifications />
+      {visibleTabs.team && (
+        <div className="max-w-2xl mx-auto px-4 pt-3">
+          <Button variant={tab === "team" ? "default" : "outline"} className="w-full" onClick={() => setTab(tab === "team" ? "home" : "team")}><Share2 />Team</Button>
+        </div>
+      )}
 
-      <main key={tab} className="client-content max-w-2xl mx-auto px-4 py-4">{tab === "notifications" ? <NotificationsTab onRead={() => setUnread(0)} /> : tab === "rewards" ? <RewardsTab /> : children(tab)}</main>
+      <main key={tab} className="client-content max-w-2xl mx-auto px-4 py-4">{tab === "notifications" ? <NotificationsTab onRead={() => setUnread(0)} /> : tab === "rewards" ? <RewardsTab /> : tab === "team" ? <TeamClient /> : children(tab)}</main>
 
       <nav aria-label="أقسام الحساب" className="client-navigation fixed bottom-3 left-3 right-3 max-w-2xl mx-auto rounded-xl p-1.5 flex z-30">
-        {TABS.filter(t => visibleTabs[t.id]).map(t => {
+        {TABS.filter(t => visibleTabs[t.id] && t.id !== "team").map(t => {
           const Icon = t.icon;
           const active = tab === t.id;
           return (
