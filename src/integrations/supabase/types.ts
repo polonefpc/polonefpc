@@ -575,6 +575,7 @@ export type Database = {
           referral_code: string
           referral_count: number
           referred_by: string | null
+          show_balance: boolean
           updated_at: string
         }
         Insert: {
@@ -590,6 +591,7 @@ export type Database = {
           referral_code: string
           referral_count?: number
           referred_by?: string | null
+          show_balance?: boolean
           updated_at?: string
         }
         Update: {
@@ -605,6 +607,7 @@ export type Database = {
           referral_code?: string
           referral_count?: number
           referred_by?: string | null
+          show_balance?: boolean
           updated_at?: string
         }
         Relationships: [
@@ -805,6 +808,30 @@ export type Database = {
           },
         ]
       }
+      support_saved_replies: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          pinned: boolean
+          uses: number
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          pinned?: boolean
+          uses?: number
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          pinned?: boolean
+          uses?: number
+        }
+        Relationships: []
+      }
       task_submissions: {
         Row: {
           admin_note: string
@@ -858,6 +885,88 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      team_members: {
+        Row: {
+          joined_at: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          joined_at?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          joined_at?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          image: string | null
+          sender_id: string
+          team_id: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          id?: string
+          image?: string | null
+          sender_id: string
+          team_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          image?: string | null
+          sender_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_messages_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+        }
+        Relationships: []
       }
       transfers: {
         Row: {
@@ -1127,6 +1236,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_team_member: {
+        Args: { _code: string; _team: string }
+        Returns: undefined
+      }
       admin_delete_package: { Args: { _id: number }; Returns: string }
       agent_grant_points: {
         Args: { _agent_id: string; _amount: number; _to_code: string }
@@ -1149,12 +1262,17 @@ export type Database = {
           ok: boolean
         }[]
       }
+      create_team: { Args: { _name: string }; Returns: string }
       gen_referral_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_team_member: {
+        Args: { _team: string; _user: string }
         Returns: boolean
       }
       open_targeted_wheel_round: {
@@ -1279,6 +1397,17 @@ export type Database = {
       }
       support_close: { Args: { _id: string }; Returns: undefined }
       support_mark_read: { Args: { _id: string }; Returns: undefined }
+      team_profiles: {
+        Args: { _team: string }
+        Returns: {
+          balance: number
+          full_name: string
+          is_active: boolean
+          package_name: string
+          referral_code: string
+          user_id: string
+        }[]
+      }
       wheel_audience_eligible: {
         Args: {
           _active: boolean
