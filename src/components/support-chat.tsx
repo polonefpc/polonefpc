@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useServerFn } from '@tanstack/react-start';
-import { MessageCircle, Send, X, Trash2, LoaderCircle, ImagePlus, Bot, ArrowRight, Info, Headset } from 'lucide-react';
+import { MessageCircle, Send, X, Trash2, LoaderCircle, ImagePlus, Bot, ArrowRight, Info, Headset, Bookmark, Ban, BadgeCheck, Layers3 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -65,6 +65,48 @@ function CustomerInfo({ details }: { details: Awaited<ReturnType<typeof supportC
   </div>;
 }
 
+function AccountActions({ userId, onChanged }: { userId: string; onChanged: () => void }) {
+  const [p, setP] = useState<any>(null);
+  const [pkgs, setPkgs] = useState<{ id: number; name: string }[]>([]);
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(async () => { const { data } = await supabase.from('profiles').select('id,is_banned,is_active,package_id').eq('id', userId).single(); setP(data); }, [userId]);
+  useEffect(() => { void load(); void supabase.from('packages').select('id,name').order('priority').then(({ data }) => setPkgs(data ?? [])); }, [load]);
+  const update = async (patch: Record<string, unknown>, ok: string) => {
+    setBusy(true);
+    const { error } = await supabase.from('profiles').update(patch as any).eq('id', userId);
+    setBusy(false);
+    if (error) return toast.error('تعذر تنفيذ الإجراء');
+    toast.success(ok); void load(); onChanged();
+  };
+  if (!p) return null;
+  return <div className="flex flex-wrap items-center gap-2 border-b border-border bg-secondary/30 px-3 py-2 text-xs">
+    <Button size="sm" variant={p.is_banned ? 'secondary' : 'outline'} className={`h-8 ${p.is_banned ? '' : 'text-destructive'}`} disabled={busy} onClick={() => { if (confirm(p.is_banned ? 'فك حظر الحساب؟' : 'حظر هذا الحساب؟')) void update({ is_banned: !p.is_banned }, p.is_banned ? 'تم فك الحظر' : 'تم حظر الحساب'); }}><Ban />{p.is_banned ? 'فك الحظر' : 'حظر'}</Button>
+    <Button size="sm" variant="outline" className="h-8" disabled={busy} onClick={() => void update(p.is_active ? { is_active: false } : { is_active: true, activated_at: new Date().toISOString() }, p.is_active ? 'تم إلغاء التفعيل' : 'تم تفعيل الحساب')}><BadgeCheck />{p.is_active ? 'إلغاء التفعيل' : 'تفعيل'}</Button>
+    <span className="flex items-center gap-1"><Layers3 className="size-4 text-primary" />
+      <select className="reward-input h-8 py-0 text-xs" disabled={busy} value={p.package_id ?? ''} onChange={e => { const v = e.target.value; if (!v) { if (confirm('إلغاء باقة العميل؟')) void update({ package_id: null }, 'تم إلغاء الباقة'); } else void update({ package_id: Number(v) }, 'تم تغيير الباقة'); }}>
+        <option value="">بدون باقة</option>{pkgs.map(k => <option key={k.id} value={k.id}>{k.name}</option>)}
+      </select></span>
+  </div>;
+}
+
+type Saved = { id: string; body: string; uses: number; pinned: boolean };
+function useSavedReplies(enabled: boolean) {
+  const [rows, setRows] = useState<Saved[]>([]);
+  const db = supabase as any;
+  const load = useCallback(async () => { if (!enabled) return; const { data } = await db.from('support_saved_replies').select('id,body,uses,pinned').order('pinned', { ascending: false }).order('uses', { ascending: false }).limit(40); setRows(data ?? []); }, [enabled]);
+  useEffect(() => { void load(); }, [load]);
+  const save = async (body: string) => { const { error } = await db.from('support_saved_replies').upsert({ body, pinned: true }, { onConflict: 'body' }); if (error) toast.error('تعذر الحفظ'); else { toast.success('تم حفظ الرسالة'); void load(); } };
+  const remove = async (id: string) => { await db.from('support_saved_replies').delete().eq('id', id); void load(); };
+  const track = async (body: string) => {
+    if (!enabled || !body) return;
+    const hit = rows.find(r => r.body === body);
+    if (hit) await db.from('support_saved_replies').update({ uses: hit.uses + 1 }).eq('id', hit.id);
+    else await db.from('support_saved_replies').upsert({ body, uses: 1 }, { onConflict: 'body', ignoreDuplicates: true });
+    void load();
+  };
+  return { rows: rows.filter(r => r.pinned || r.uses >= 2), save, remove, track };
+}
+
 export function SupportChat({ admin = false }: { admin?: boolean }) {
   const [open, setOpen] = useState(admin);
   const [uid, setUid] = useState('');
@@ -82,6 +124,8 @@ export function SupportChat({ admin = false }: { admin?: boolean }) {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [details, setDetails] = useState<Awaited<ReturnType<typeof supportCustomer>> | null>(null);
   const getDetails = useServerFn(supportCustomer);
+  const saved = useSavedReplies(admin);
+  const [showSaved, setShowSaved] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const current = fresh ? undefined : conversations.find(c => c.id === selected);
@@ -147,6 +191,7 @@ export function SupportChat({ admin = false }: { admin?: boolean }) {
     const { error } = await supabase.from('support_messages').insert({ conversation_id: selected, sender_id: uid, body: text.trim(), image: image || null });
     setBusy(false);
     if (error) { toast.error('تعذر إرسال الرسالة'); return; }
+    if (admin && text.trim().length <= 1000) void saved.track(text.trim());
     setText(''); setImage('');
     await supabase.from('support_conversations').update({ updated_at: new Date().toISOString() }).eq('id', selected);
     void read(selected);
@@ -193,6 +238,7 @@ export function SupportChat({ admin = false }: { admin?: boolean }) {
       {!admin && <Button size="sm" variant="ghost" onClick={() => setFresh(true)}>دردشة جديدة</Button>}
       {!admin && <Button size="icon" variant="ghost" onClick={() => setOpen(false)} aria-label="إغلاق الدعم"><X /></Button>}
     </header>
+    {admin && <AccountActions userId={current.user_id} onChanged={() => setDetails(null)} />}
     {admin && showInfo && <CustomerInfo details={details} />}
     <div className="support-thread min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain p-3" aria-live="polite">
       <div className="mx-auto max-w-[90%] rounded-xl bg-card px-3 py-2 text-center text-xs text-muted-foreground"><b className="block text-foreground">{current.category}</b><span className="whitespace-pre-wrap break-words">{current.description}</span></div>
@@ -211,7 +257,13 @@ export function SupportChat({ admin = false }: { admin?: boolean }) {
       <div ref={bottom} />
     </div>
     {closed ? <div className="border-t border-border bg-card p-3 text-center text-sm"><b className="text-success">المحادثة مكتملة</b>{!admin && <Button className="mt-2 w-full" onClick={() => setFresh(true)}>رسالة دعم جديدة</Button>}</div> : <>{image && <div className="flex items-center gap-2 border-t border-border bg-card p-2"><img src={image} alt="معاينة" className="h-14 rounded" /><Button size="icon" variant="ghost" onClick={() => setImage('')} aria-label="إزالة الصورة"><X /></Button></div>}
+    {admin && showSaved && <div className="max-h-40 space-y-1 overflow-y-auto border-t border-border bg-secondary/30 p-2">
+      {!saved.rows.length && <p className="text-xs text-muted-foreground">لا توجد رسائل محفوظة. اكتب رسالة واضغط حفظ، أو أرسل نفس الرسالة أكثر من مرة لتظهر هنا.</p>}
+      {saved.rows.map(r => <div key={r.id} className="flex items-center gap-1"><button className="min-w-0 flex-1 truncate rounded-lg bg-card px-3 py-1.5 text-start text-xs hover:bg-secondary" onClick={() => { setText(r.body); setShowSaved(false); }}>{r.body}</button><Button size="icon" variant="ghost" className="size-7" onClick={() => saved.remove(r.id)} aria-label="حذف"><X /></Button></div>)}
+    </div>}
     <form className="flex items-end gap-2 border-t border-border bg-card p-2" onSubmit={e => { e.preventDefault(); void send(); }}>
+      {admin && <Button type="button" size="icon" variant={showSaved ? 'secondary' : 'ghost'} onClick={() => setShowSaved(v => !v)} aria-label="الرسائل المحفوظة" title="الرسائل المحفوظة"><Bookmark /></Button>}
+      {admin && text.trim() && <Button type="button" size="sm" variant="ghost" className="text-xs" onClick={() => saved.save(text.trim())}>حفظ</Button>}
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={e => void pick(e.target.files?.[0])} />
       <Button type="button" size="icon" variant="ghost" onClick={() => fileRef.current?.click()} aria-label="إرفاق صورة"><ImagePlus /></Button>
       <textarea aria-label="رسالتك" placeholder="اكتب رسالتك…" className="reward-input min-h-10 min-w-0 flex-1 resize-none rounded-full" rows={1} maxLength={3000} value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }} />
