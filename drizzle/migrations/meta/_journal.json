@@ -50,6 +50,13 @@
       "when": 1793842953131,
       "tag": "0006_withdraw_v2_transfer_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793925660995,
+      "tag": "0007_teams_saved_replies",
+      "breakpoints": true
     }
   ]
 }
