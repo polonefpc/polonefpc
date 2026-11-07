@@ -1,5 +1,10 @@
 # Roadmap
 
+- [ ] Complete and verify support account actions, saved replies, and smooth ticket navigation
+- [ ] Verify Team groups, photos, member profiles, and profile balance privacy
+- [ ] Complete and verify admin visibility switches including tasks
+- [ ] Run authenticated browser checks and focused regression tests
+
 - [ ] Animate the market indicator in its selected upward/downward direction
 - [ ] Add configurable welcome, referral and selected-account wheel rounds with secure eligibility
 - [ ] Test wheel eligibility and verify customer/admin controls

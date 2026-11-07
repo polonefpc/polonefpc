@@ -769,14 +769,14 @@ function Settings() {
   const [signalText, setSignalText] = useState("");
   const [signalValue, setSignalValue] = useState("");
   const [signalHistory, setSignalHistory] = useState<any[]>([]);
-  const [tabVisibility, setTabVisibility] = useState({ deposit: true, withdraw: true, local: true, shop: true, referral: true, rewards: true, notifications: true, team: true });
+  const [tabVisibility, setTabVisibility] = useState({ deposit: true, withdraw: true, local: true, shop: true, referral: true, rewards: true, wheel: true, tasks: true, notifications: true, team: true });
   const loadWallets = () => supabase.from("deposit_wallets").select("*").order("sort_order").then(({data})=>setWallets(data ?? []));
   useEffect(()=>{
     supabase.from("settings").select("*").eq("key","deposit_description").maybeSingle().then(({data})=>setDesc(data?.value ?? ""));
     supabase.from("settings").select("*").eq("key","withdraw_description").maybeSingle().then(({data})=>setWithdrawDesc(data?.value ?? ""));
     supabase.from("settings").select("*").eq("key","support_url").maybeSingle().then(({data})=>setSupportUrl(data?.value ?? ""));
     supabase.from("settings").select("*").eq("key","support_enabled").maybeSingle().then(({data})=>setSupportEnabled((data?.value ?? "false") === "true"));
-    supabase.from("settings").select("key,value").in("key",["welcome_bonus_enabled","welcome_bonus_amount","referral_offer_enabled","referral_offer_goal","referral_offer_reward","referral_offer_title","market_signal_enabled","market_signal_direction","market_signal_text","market_signal_value","market_signal_history","tab_deposit_visible","tab_withdraw_visible","tab_local_visible","tab_shop_visible","tab_referral_visible","tab_rewards_visible","tab_notifications_visible","tab_team_visible"]).then(({data})=>{
+    supabase.from("settings").select("key,value").in("key",["welcome_bonus_enabled","welcome_bonus_amount","referral_offer_enabled","referral_offer_goal","referral_offer_reward","referral_offer_title","market_signal_enabled","market_signal_direction","market_signal_text","market_signal_value","market_signal_history","tab_deposit_visible","tab_withdraw_visible","tab_local_visible","tab_shop_visible","tab_referral_visible","tab_rewards_visible","tab_wheel_visible","tab_tasks_visible","tab_notifications_visible","tab_team_visible"]).then(({data})=>{
       const m = Object.fromEntries((data ?? []).map((r:any)=>[r.key, r.value]));
       setBonusEnabled((m.welcome_bonus_enabled ?? "true") === "true");
       setBonusAmount(m.welcome_bonus_amount ?? "25");
@@ -796,6 +796,8 @@ function Settings() {
         shop: (m.tab_shop_visible ?? "true") === "true",
         referral: (m.tab_referral_visible ?? "true") === "true",
         rewards: (m.tab_rewards_visible ?? "true") === "true",
+        wheel: (m.tab_wheel_visible ?? "true") === "true",
+        tasks: (m.tab_tasks_visible ?? "true") === "true",
         notifications: (m.tab_notifications_visible ?? "true") === "true",
         team: (m.tab_team_visible ?? "true") === "true",
       });
@@ -847,6 +849,8 @@ function Settings() {
       { key:"tab_shop_visible", value: String(tabVisibility.shop), updated_at: new Date().toISOString() },
       { key:"tab_referral_visible", value: String(tabVisibility.referral), updated_at: new Date().toISOString() },
       { key:"tab_rewards_visible", value: String(tabVisibility.rewards), updated_at: new Date().toISOString() },
+      { key:"tab_wheel_visible", value: String(tabVisibility.wheel), updated_at: new Date().toISOString() },
+      { key:"tab_tasks_visible", value: String(tabVisibility.tasks), updated_at: new Date().toISOString() },
       { key:"tab_notifications_visible", value: String(tabVisibility.notifications), updated_at: new Date().toISOString() },
       { key:"tab_team_visible", value: String(tabVisibility.team), updated_at: new Date().toISOString() },
     ]);
@@ -1017,7 +1021,7 @@ function Settings() {
         <p className="text-xs text-muted-foreground">الصفحة الرئيسية تبقى ظاهرة دائماً.</p>
         <div className="grid sm:grid-cols-2 gap-2">
           {([
-            ["deposit", "الإيداع"], ["withdraw", "السحب"], ["local", "الإيداع المحلي"], ["shop", "الباقات"], ["referral", "الإحالة"], ["rewards", "المكافآت والمهام"], ["notifications", "الإشعارات"], ["team", "زر Team"],
+            ["deposit", "الإيداع"], ["withdraw", "السحب"], ["local", "الإيداع المحلي"], ["shop", "الباقات"], ["referral", "الإحالة"], ["rewards", "قسم المكافآت"], ["wheel", "عجلة الربح"], ["tasks", "المهام"], ["notifications", "الإشعارات"], ["team", "زر Team"],
           ] as const).map(([key, label]) => (
             <label key={key} className="flex items-center justify-between gap-3 rounded-lg bg-secondary/40 px-3 py-2 text-sm">
               <span>{label}</span>
