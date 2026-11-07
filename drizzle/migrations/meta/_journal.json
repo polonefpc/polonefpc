@@ -64,6 +64,13 @@
       "when": 1794053676320,
       "tag": "0008_support_reply_tracking_profile_protection",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794053690985,
+      "tag": "0009_preserve_atomic_reward_profile_updates",
+      "breakpoints": true
     }
   ]
 }
