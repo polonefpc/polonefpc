@@ -14,6 +14,7 @@ import { requestWithdrawal } from "@/lib/withdrawal.functions";
 import { BrandLogo } from "@/components/brand-logo";
 import { RewardsClient } from "@/components/rewards-client";
 import { TeamClient } from "@/components/team-client";
+import { rewardModes } from "@/lib/account-visibility";
 import { MarketIndicator, type SignalPoint } from "@/components/market-indicator";
 
 type Tab = "home" | "deposit" | "withdraw" | "local" | "shop" | "referral" | "notifications" | "rewards" | "team";
@@ -33,16 +34,19 @@ const TABS: { id: Tab; label: string; icon: typeof Home }[] = [
 export function ClientShell({ children, userEmail, roles }: { children: (tab: Tab) => React.ReactNode; userEmail: string; roles: Role[] }) {
   const [tab, setTab] = useState<Tab>("home");
   const [unread, setUnread] = useState(0);
+  const [rewardVisibility, setRewardVisibility] = useState({ wheel: true, tasks: true });
   const [visibleTabs, setVisibleTabs] = useState<Record<Tab, boolean>>({
-    home: true, deposit: true, withdraw: true, local: true, shop: true, referral: true, notifications: true, rewards: true, team: false,
+    home: true, deposit: true, withdraw: true, local: true, shop: true, referral: true, notifications: true, rewards: true, team: true,
   });
   const nav = useNavigate();
 
   useEffect(() => {
     supabase.from("settings").select("key,value").in("key", [
-      "tab_deposit_visible", "tab_withdraw_visible", "tab_local_visible", "tab_shop_visible", "tab_referral_visible", "tab_rewards_visible", "tab_notifications_visible", "tab_team_visible",
+      "tab_deposit_visible", "tab_withdraw_visible", "tab_local_visible", "tab_shop_visible", "tab_referral_visible", "tab_rewards_visible", "tab_wheel_visible", "tab_tasks_visible", "tab_notifications_visible", "tab_team_visible",
     ]).then(({ data }) => {
       const values = Object.fromEntries((data ?? []).map(row => [row.key, row.value]));
+      const modes = rewardModes(values);
+      setRewardVisibility(modes);
       const next: Record<Tab, boolean> = {
         home: true,
         deposit: (values.tab_deposit_visible ?? "true") === "true",
@@ -51,7 +55,7 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
         shop: (values.tab_shop_visible ?? "true") === "true",
         referral: (values.tab_referral_visible ?? "true") === "true",
         notifications: (values.tab_notifications_visible ?? "true") === "true",
-        rewards: (values.tab_rewards_visible ?? "true") === "true",
+        rewards: modes.wheel || modes.tasks,
         team: (values.tab_team_visible ?? "true") === "true",
       };
       setVisibleTabs(next);
@@ -96,14 +100,14 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
         </div>
       </header>
 
-      <ClientNotifications />
+      {visibleTabs.notifications && <ClientNotifications />}
       {visibleTabs.team && (
         <div className="max-w-2xl mx-auto px-4 pt-3">
           <Button variant={tab === "team" ? "default" : "outline"} className="w-full" onClick={() => setTab(tab === "team" ? "home" : "team")}><Share2 />Team</Button>
         </div>
       )}
 
-      <main key={tab} className="client-content max-w-2xl mx-auto px-4 py-4">{tab === "notifications" ? <NotificationsTab onRead={() => setUnread(0)} /> : tab === "rewards" ? <RewardsTab /> : tab === "team" ? <TeamClient /> : children(tab)}</main>
+      <main key={tab} className="client-content max-w-2xl mx-auto px-4 py-4">{tab === "notifications" ? <NotificationsTab onRead={() => setUnread(0)} /> : tab === "rewards" ? <RewardsTab visibility={rewardVisibility} /> : tab === "team" ? <TeamClient /> : children(tab)}</main>
 
       <nav aria-label="أقسام الحساب" className="client-navigation fixed bottom-3 left-3 right-3 max-w-2xl mx-auto rounded-xl p-1.5 flex z-30">
         {TABS.filter(t => visibleTabs[t.id] && t.id !== "team").map(t => {
@@ -125,13 +129,13 @@ export function ClientShell({ children, userEmail, roles }: { children: (tab: Ta
   );
 }
 
-function RewardsTab() {
-  const [mode, setMode] = useState<"wheel" | "tasks">("wheel");
+function RewardsTab({ visibility }: { visibility: { wheel: boolean; tasks: boolean } }) {
+  const [mode, setMode] = useState<"wheel" | "tasks">(visibility.wheel ? "wheel" : "tasks");
   return (
     <div className="space-y-4">
       <div className="border-b border-border pb-3 flex gap-2">
-        <Button onClick={() => setMode("wheel")} variant={mode === "wheel" ? "default" : "ghost"} className="flex-1"><Gift />عجلة الربح</Button>
-        <Button onClick={() => setMode("tasks")} variant={mode === "tasks" ? "default" : "ghost"} className="flex-1"><Package />المهام</Button>
+        {visibility.wheel && <Button onClick={() => setMode("wheel")} variant={mode === "wheel" ? "default" : "ghost"} className="flex-1"><Gift />عجلة الربح</Button>}
+        {visibility.tasks && <Button onClick={() => setMode("tasks")} variant={mode === "tasks" ? "default" : "ghost"} className="flex-1"><Package />المهام</Button>}
       </div>
       <RewardsClient key={mode} mode={mode} />
     </div>
@@ -296,6 +300,16 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
   const [showBal, setShowBal] = useState(false);
   const code = profile?.referral_code ?? "—";
   const copyCode = () => { if (profile?.referral_code) { navigator.clipboard.writeText(code); toast.success("تم نسخ رمز الإحالة"); } };
+  const [privacyBusy, setPrivacyBusy] = useState(false);
+  const changeBalancePrivacy = async (visible: boolean) => {
+    if (!profile?.id) return;
+    setPrivacyBusy(true);
+    const { data, error } = await supabase.from("profiles").update({ show_balance: visible }).eq("id", profile.id).select("show_balance").single();
+    setPrivacyBusy(false);
+    if (error || data?.show_balance !== visible) return toast.error("تعذر حفظ خصوصية الرصيد");
+    toast.success(visible ? "رصيدك ظاهر لأعضاء Team" : "رصيدك مخفي عن أعضاء Team");
+    void reload?.();
+  };
 
   // ─── تحدي الإحالة (قابل للتحكم من لوحة الأدمن) ───
   const [offer, setOffer] = useState<{ enabled: boolean; goal: number; reward: number; title: string } | null>(null);
@@ -420,6 +434,11 @@ export function HomeTab({ profile, packages, refs, yields, transactions, reload 
         </div>
       </div>
 
+
+      <label className="flex items-center justify-between gap-3 border-b border-border px-1 py-3 text-sm">
+        <span>إظهار رصيدي لأعضاء Team</span>
+        <input aria-label="إظهار رصيدي لأعضاء Team" type="checkbox" disabled={privacyBusy} checked={profile?.show_balance ?? true} onChange={e => void changeBalancePrivacy(e.target.checked)} />
+      </label>
 
       {/* تحدي الإحالة */}
       {offer?.enabled && (
