@@ -1408,6 +1408,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      track_support_reply: { Args: { _body: string }; Returns: undefined }
       wheel_audience_eligible: {
         Args: {
           _active: boolean
